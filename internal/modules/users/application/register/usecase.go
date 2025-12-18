@@ -63,6 +63,11 @@ func (uc *UseCase) Execute(ctx context.Context, in Input) (login.Output, error) 
 		return login.Output{}, common.NormalizeError(err)
 	}
 
+	displayName, err := domain.NewDisplayName(in.DisplayName)
+	if err != nil {
+		return login.Output{}, common.NormalizeError(err)
+	}
+
 	hash, err := domain.NewPasswordHash(ctx, in.Password, uc.hasher)
 	if err != nil {
 		return login.Output{}, common.NormalizeError(err)
@@ -70,7 +75,7 @@ func (uc *UseCase) Execute(ctx context.Context, in Input) (login.Output, error) 
 
 	userID := domain.NewUserID()
 	now := time.Now().UTC()
-	user := domain.NewUser(userID, in.DisplayName, now)
+	user := domain.NewUser(userID, displayName, now)
 	identity := domain.NewEmailIdentity(userID, email, hash, now)
 
 	accessToken, err := uc.access.Issue(userID.String(), uc.accessTTL)
@@ -88,7 +93,7 @@ func (uc *UseCase) Execute(ctx context.Context, in Input) (login.Output, error) 
 	event := events.UserRegistered{
 		UserID:      userID.String(),
 		Email:       email.String(),
-		DisplayName: in.DisplayName,
+		DisplayName: displayName.String(),
 		OccurredAt:  now,
 	}
 
@@ -116,7 +121,7 @@ func (uc *UseCase) Execute(ctx context.Context, in Input) (login.Output, error) 
 
 	out := login.Output{
 		UserID:       userID.String(),
-		DisplayName:  in.DisplayName,
+		DisplayName:  displayName.String(),
 		AvatarURL:    "",
 		AccessToken:  accessToken,
 		RefreshToken: refreshRaw,

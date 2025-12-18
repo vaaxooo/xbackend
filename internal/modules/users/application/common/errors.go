@@ -25,6 +25,8 @@ func isDomainError(err error) bool {
 	case errors.Is(err, domain.ErrInvalidEmail),
 		errors.Is(err, domain.ErrWeakPassword),
 		errors.Is(err, domain.ErrEmailAlreadyUsed),
+		errors.Is(err, domain.ErrInvalidDisplayName),
+		errors.Is(err, domain.ErrInvalidAvatarURL),
 		errors.Is(err, domain.ErrInvalidCredentials),
 		errors.Is(err, domain.ErrUnauthorized),
 		errors.Is(err, domain.ErrIdentityAlreadyLinked),

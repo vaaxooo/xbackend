@@ -16,10 +16,10 @@ type User struct {
 	CreatedAt         time.Time
 }
 
-func NewUser(id UserID, displayName string, createdAt time.Time) User {
+func NewUser(id UserID, displayName DisplayName, createdAt time.Time) User {
 	return User{
 		ID:                id,
-		DisplayName:       strings.TrimSpace(displayName),
+		DisplayName:       displayName.String(),
 		AvatarURL:         "",
 		ProfileCustomized: false,
 		CreatedAt:         createdAt,
@@ -34,7 +34,7 @@ type ProfilePatch struct {
 	AvatarURL   *string
 }
 
-func (u User) ApplyPatch(p ProfilePatch) User {
+func (u User) ApplyPatch(p ProfilePatch) (User, error) {
 	if p.FirstName != nil {
 		u.FirstName = strings.TrimSpace(*p.FirstName)
 	}
@@ -45,11 +45,19 @@ func (u User) ApplyPatch(p ProfilePatch) User {
 		u.MiddleName = strings.TrimSpace(*p.MiddleName)
 	}
 	if p.DisplayName != nil {
-		u.DisplayName = strings.TrimSpace(*p.DisplayName)
+		displayName, err := NewDisplayName(*p.DisplayName)
+		if err != nil {
+			return User{}, err
+		}
+		u.DisplayName = displayName.String()
 	}
 	if p.AvatarURL != nil {
-		u.AvatarURL = strings.TrimSpace(*p.AvatarURL)
+		avatarURL, err := NewAvatarURL(*p.AvatarURL)
+		if err != nil {
+			return User{}, err
+		}
+		u.AvatarURL = avatarURL.String()
 	}
 	u.ProfileCustomized = true
-	return u
+	return u, nil
 }

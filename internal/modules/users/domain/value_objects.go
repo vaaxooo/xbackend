@@ -2,9 +2,16 @@ package domain
 
 import (
 	"context"
+	"net/url"
 	"strings"
 
 	"github.com/google/uuid"
+)
+
+const (
+	displayNameMinLength = 2
+	displayNameMaxLength = 64
+	avatarURLMaxLength   = 2048
 )
 
 type PasswordHasher interface {
@@ -97,4 +104,46 @@ func isValidEmail(email string) bool {
 
 func isStrongPassword(pw string) bool {
 	return len(pw) >= 8
+}
+
+type DisplayName struct {
+	value string
+}
+
+func NewDisplayName(raw string) (DisplayName, error) {
+	normalized := strings.TrimSpace(raw)
+	if l := len(normalized); l < displayNameMinLength || l > displayNameMaxLength {
+		return DisplayName{}, ErrInvalidDisplayName
+	}
+	return DisplayName{value: normalized}, nil
+}
+
+func (d DisplayName) String() string {
+	return d.value
+}
+
+type AvatarURL struct {
+	value string
+}
+
+func NewAvatarURL(raw string) (AvatarURL, error) {
+	normalized := strings.TrimSpace(raw)
+	if normalized == "" {
+		return AvatarURL{value: ""}, nil
+	}
+	if len(normalized) > avatarURLMaxLength {
+		return AvatarURL{}, ErrInvalidAvatarURL
+	}
+	parsed, err := url.Parse(normalized)
+	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
+		return AvatarURL{}, ErrInvalidAvatarURL
+	}
+	if parsed.Scheme != "http" && parsed.Scheme != "https" {
+		return AvatarURL{}, ErrInvalidAvatarURL
+	}
+	return AvatarURL{value: normalized}, nil
+}
+
+func (a AvatarURL) String() string {
+	return a.value
 }
