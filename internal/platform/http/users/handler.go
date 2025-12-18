@@ -1,4 +1,4 @@
-package http
+package users
 
 import (
 	"encoding/json"
@@ -12,7 +12,8 @@ import (
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/refresh"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/register"
 	"github.com/vaaxooo/xbackend/internal/modules/users/domain"
-	"github.com/vaaxooo/xbackend/internal/modules/users/infrastructure/transport/http/dto"
+	"github.com/vaaxooo/xbackend/internal/platform/http/users/dto"
+	"github.com/vaaxooo/xbackend/internal/platform/http/users/httpctx"
 
 	phttp "github.com/vaaxooo/xbackend/internal/platform/http"
 )
@@ -115,7 +116,7 @@ func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) GetMe(w http.ResponseWriter, r *http.Request) {
-	uid, ok := UserIDFromContext(r.Context())
+	uid, ok := httpctx.UserIDFromContext(r.Context())
 	if !ok || uid == "" {
 		phttp.WriteError(w, http.StatusUnauthorized, "unauthorized", "Unauthorized")
 		return
@@ -141,7 +142,7 @@ func (h *Handler) GetMe(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
-	uid, ok := UserIDFromContext(r.Context())
+	uid, ok := httpctx.UserIDFromContext(r.Context())
 	if !ok {
 		phttp.WriteError(w, http.StatusUnauthorized, "unauthorized", "Unauthorized")
 		return
@@ -178,7 +179,7 @@ func (h *Handler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) LinkProvider(w http.ResponseWriter, r *http.Request) {
-	uid, ok := UserIDFromContext(r.Context())
+	uid, ok := httpctx.UserIDFromContext(r.Context())
 	if !ok {
 		phttp.WriteError(w, http.StatusUnauthorized, "unauthorized", "Unauthorized")
 		return
