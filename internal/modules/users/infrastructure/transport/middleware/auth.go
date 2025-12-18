@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/vaaxooo/xbackend/internal/modules/users/transport/httpctx"
+	"github.com/vaaxooo/xbackend/internal/modules/users/infrastructure/transport/httpctx"
 	phttp "github.com/vaaxooo/xbackend/internal/platform/http"
 )
 

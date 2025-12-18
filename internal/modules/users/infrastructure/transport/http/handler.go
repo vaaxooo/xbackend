@@ -5,14 +5,14 @@ import (
 	"errors"
 	"net/http"
 
-	usersapp "github.com/vaaxooo/xbackend/internal/modules/users/app"
-	"github.com/vaaxooo/xbackend/internal/modules/users/app/link"
-	"github.com/vaaxooo/xbackend/internal/modules/users/app/login"
-	"github.com/vaaxooo/xbackend/internal/modules/users/app/profile"
-	"github.com/vaaxooo/xbackend/internal/modules/users/app/refresh"
-	"github.com/vaaxooo/xbackend/internal/modules/users/app/register"
+	usersapp "github.com/vaaxooo/xbackend/internal/modules/users/application"
+	"github.com/vaaxooo/xbackend/internal/modules/users/application/link"
+	"github.com/vaaxooo/xbackend/internal/modules/users/application/login"
+	"github.com/vaaxooo/xbackend/internal/modules/users/application/profile"
+	"github.com/vaaxooo/xbackend/internal/modules/users/application/refresh"
+	"github.com/vaaxooo/xbackend/internal/modules/users/application/register"
 	"github.com/vaaxooo/xbackend/internal/modules/users/domain"
-	"github.com/vaaxooo/xbackend/internal/modules/users/transport/http/dto"
+	"github.com/vaaxooo/xbackend/internal/modules/users/infrastructure/transport/http/dto"
 
 	phttp "github.com/vaaxooo/xbackend/internal/platform/http"
 )
