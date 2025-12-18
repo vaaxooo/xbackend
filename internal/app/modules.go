@@ -5,8 +5,15 @@ import (
 	"time"
 
 	usersapp "github.com/vaaxooo/xbackend/internal/modules/users/application"
-	userswiring "github.com/vaaxooo/xbackend/internal/modules/users/infrastructure/wiring"
-
+	"github.com/vaaxooo/xbackend/internal/modules/users/application/link"
+	"github.com/vaaxooo/xbackend/internal/modules/users/application/login"
+	"github.com/vaaxooo/xbackend/internal/modules/users/application/profile"
+	"github.com/vaaxooo/xbackend/internal/modules/users/application/refresh"
+	"github.com/vaaxooo/xbackend/internal/modules/users/application/register"
+	userscrypto "github.com/vaaxooo/xbackend/internal/modules/users/infrastructure/crypto"
+	userstokens "github.com/vaaxooo/xbackend/internal/modules/users/infrastructure/tokens"
+	pdb "github.com/vaaxooo/xbackend/internal/platform/db"
+	usersdb "github.com/vaaxooo/xbackend/internal/platform/db/users"
 	plog "github.com/vaaxooo/xbackend/internal/platform/log"
 )
 
@@ -32,7 +39,9 @@ type ModuleDeps struct {
 // UsersModule exposes the Users bounded context public API.
 type UsersModule struct {
 	Service usersapp.Service
-	Tokens  userswiring.TokenParser
+	Tokens  interface {
+		Parse(token string) (string, error)
+	}
 }
 
 func InitModules(deps ModuleDeps) (*Modules, error) {
@@ -47,18 +56,30 @@ func InitModules(deps ModuleDeps) (*Modules, error) {
 }
 
 func initUsersModule(deps ModuleDeps) (*UsersModule, error) {
-	built, err := userswiring.Build(userswiring.Deps{
-		DB:         deps.DB,
-		JWTSecret:  deps.AuthJWTSecret,
-		AccessTTL:  deps.AuthAccessTTL,
-		RefreshTTL: deps.AuthRefreshTTL,
-	})
+	usersRepo := usersdb.NewUserRepo(deps.DB)
+	identityRepo := usersdb.NewIdentityRepo(deps.DB)
+	refreshRepo := usersdb.NewRefreshRepo(deps.DB)
+	tx := pdb.NewTransactor(deps.DB)
+
+	hasher := userscrypto.NewBcryptHasher(0)
+
+	tok, err := userstokens.NewHS256(deps.AuthJWTSecret)
 	if err != nil {
 		return nil, err
 	}
 
+	registerUC := register.New(tx, usersRepo, identityRepo, refreshRepo, hasher, tok, deps.AuthAccessTTL, deps.AuthRefreshTTL)
+	loginUC := login.New(tx, usersRepo, identityRepo, refreshRepo, hasher, tok, deps.AuthAccessTTL, deps.AuthRefreshTTL)
+	refreshUC := refresh.New(tx, refreshRepo, tok, deps.AuthAccessTTL, deps.AuthRefreshTTL)
+
+	meUC := profile.NewGet(usersRepo)
+	profileUC := profile.NewUpdate(usersRepo)
+	linkUC := link.New(identityRepo)
+
+	svc := usersapp.NewService(registerUC, loginUC, refreshUC, meUC, profileUC, linkUC)
+
 	return &UsersModule{
-		Service: built.Service,
-		Tokens:  built.Tokens,
+		Service: svc,
+		Tokens:  tok,
 	}, nil
 }

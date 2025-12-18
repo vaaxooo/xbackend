@@ -3,7 +3,7 @@ package app
 import (
 	"github.com/go-chi/chi/v5"
 
-	usershttp "github.com/vaaxooo/xbackend/internal/modules/users/infrastructure/transport/http"
+	usershttp "github.com/vaaxooo/xbackend/internal/platform/http/users"
 )
 
 // RegisterAPIV1 registers all HTTP routes for API v1.
