@@ -11,6 +11,7 @@ import (
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/refresh"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/register"
 	userscrypto "github.com/vaaxooo/xbackend/internal/modules/users/infrastructure/crypto"
+	usersevents "github.com/vaaxooo/xbackend/internal/modules/users/infrastructure/events"
 	userstokens "github.com/vaaxooo/xbackend/internal/modules/users/infrastructure/tokens"
 	pdb "github.com/vaaxooo/xbackend/internal/platform/db"
 	usersdb "github.com/vaaxooo/xbackend/internal/platform/db/users"
@@ -68,7 +69,9 @@ func initUsersModule(deps ModuleDeps) (*UsersModule, error) {
 		return nil, err
 	}
 
-	registerUC := register.New(uow, usersRepo, identityRepo, refreshRepo, hasher, tok, deps.AuthAccessTTL, deps.AuthRefreshTTL)
+	eventPublisher := usersevents.NewLoggerPublisher(deps.Logger)
+
+	registerUC := register.New(uow, usersRepo, identityRepo, refreshRepo, hasher, tok, eventPublisher, deps.AuthAccessTTL, deps.AuthRefreshTTL)
 	loginUC := login.New(uow, usersRepo, identityRepo, refreshRepo, hasher, tok, deps.AuthAccessTTL, deps.AuthRefreshTTL)
 	refreshUC := refresh.New(uow, refreshRepo, tok, deps.AuthAccessTTL, deps.AuthRefreshTTL)
 
