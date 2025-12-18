@@ -64,13 +64,18 @@ func (uc *UpdateUseCase) Execute(ctx context.Context, in UpdateInput) (Output, e
 		return Output{}, domain.ErrUnauthorized
 	}
 
-	u, err := uc.users.UpdateProfile(ctx, current.ApplyPatch(domain.ProfilePatch{
+	patched, err := current.ApplyPatch(domain.ProfilePatch{
 		FirstName:   in.FirstName,
 		LastName:    in.LastName,
 		MiddleName:  in.MiddleName,
 		DisplayName: in.DisplayName,
 		AvatarURL:   in.AvatarURL,
-	}))
+	})
+	if err != nil {
+		return Output{}, common.NormalizeError(err)
+	}
+
+	u, err := uc.users.UpdateProfile(ctx, patched)
 	if err != nil {
 		return Output{}, common.NormalizeError(err)
 	}

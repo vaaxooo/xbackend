@@ -3,6 +3,7 @@ package domain
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 )
 
@@ -83,6 +84,55 @@ func TestPasswordHashCompare(t *testing.T) {
 	}
 	if hasher.compareArgs[0] != [2]string{"abc", "pw"} {
 		t.Fatalf("unexpected compare args %#v", hasher.compareArgs[0])
+	}
+}
+
+func TestNewDisplayName(t *testing.T) {
+	name, err := NewDisplayName("  Alice ")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if got := name.String(); got != "Alice" {
+		t.Fatalf("expected normalized display name, got %s", got)
+	}
+}
+
+func TestNewDisplayName_Invalid(t *testing.T) {
+	tooShort := " "
+	if _, err := NewDisplayName(tooShort); !errors.Is(err, ErrInvalidDisplayName) {
+		t.Fatalf("expected ErrInvalidDisplayName, got %v", err)
+	}
+	tooLong := strings.Repeat("a", displayNameMaxLength+1)
+	if _, err := NewDisplayName(tooLong); !errors.Is(err, ErrInvalidDisplayName) {
+		t.Fatalf("expected ErrInvalidDisplayName for long name, got %v", err)
+	}
+}
+
+func TestNewAvatarURL(t *testing.T) {
+	avatar, err := NewAvatarURL(" https://example.com/a.png ")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if avatar.String() != "https://example.com/a.png" {
+		t.Fatalf("expected normalized url, got %s", avatar.String())
+	}
+
+	empty, err := NewAvatarURL("   ")
+	if err != nil {
+		t.Fatalf("expected empty avatar allowed, got %v", err)
+	}
+	if empty.String() != "" {
+		t.Fatalf("expected empty avatar, got %s", empty.String())
+	}
+}
+
+func TestNewAvatarURL_Invalid(t *testing.T) {
+	if _, err := NewAvatarURL("ftp://example.com"); !errors.Is(err, ErrInvalidAvatarURL) {
+		t.Fatalf("expected ErrInvalidAvatarURL, got %v", err)
+	}
+	tooLong := strings.Repeat("h", avatarURLMaxLength+1)
+	if _, err := NewAvatarURL(tooLong); !errors.Is(err, ErrInvalidAvatarURL) {
+		t.Fatalf("expected ErrInvalidAvatarURL for long url, got %v", err)
 	}
 }
 

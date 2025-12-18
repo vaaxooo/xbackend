@@ -75,3 +75,14 @@ func TestUpdateProfile(t *testing.T) {
 		t.Fatalf("expected patched user saved")
 	}
 }
+
+func TestUpdateProfile_InvalidAvatar(t *testing.T) {
+	user := domain.User{ID: "user", DisplayName: "Old"}
+	repo := &profileUsersRepoMock{user: user}
+	uc := NewUpdate(repo)
+
+	avatar := "ftp://example.com/avatar.png"
+	if _, err := uc.Execute(context.Background(), UpdateInput{UserID: "user", AvatarURL: &avatar}); !errors.Is(err, domain.ErrInvalidAvatarURL) {
+		t.Fatalf("expected invalid avatar error, got %v", err)
+	}
+}

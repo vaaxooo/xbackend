@@ -20,7 +20,11 @@ func TestUserRepoCreateAndGet(t *testing.T) {
 	defer db.Close()
 
 	repo := NewUserRepo(db)
-	user := domain.NewUser(domain.UserID("user-1"), "Display", time.Unix(0, 0))
+	displayName, err := domain.NewDisplayName("Display")
+	if err != nil {
+		t.Fatalf("failed to create display name: %v", err)
+	}
+	user := domain.NewUser(domain.UserID("user-1"), displayName, time.Unix(0, 0))
 
 	mock.ExpectExec(regexp.QuoteMeta("INSERT INTO users")).
 		WithArgs(user.ID.String(), sqlmock.AnyArg(), nil, user.ProfileCustomized, user.CreatedAt).
@@ -48,7 +52,11 @@ func TestUserRepoCreateAndGet(t *testing.T) {
 		AddRow("user-1", "John", "", "", "Display", "", true, user.CreatedAt)
 	mock.ExpectQuery(regexp.QuoteMeta("UPDATE users")).WillReturnRows(updateRows)
 
-	patched, err := repo.UpdateProfile(context.Background(), got.ApplyPatch(domain.ProfilePatch{FirstName: ptr("John")}))
+	patchedUser, err := got.ApplyPatch(domain.ProfilePatch{FirstName: ptr("John")})
+	if err != nil {
+		t.Fatalf("apply patch failed: %v", err)
+	}
+	patched, err := repo.UpdateProfile(context.Background(), patchedUser)
 	if err != nil {
 		t.Fatalf("update failed: %v", err)
 	}
