@@ -20,6 +20,7 @@ import (
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/refresh"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/register"
 	"github.com/vaaxooo/xbackend/internal/modules/users/domain"
+	"github.com/vaaxooo/xbackend/internal/modules/users/public"
 	phttp "github.com/vaaxooo/xbackend/internal/platform/http"
 	"github.com/vaaxooo/xbackend/internal/platform/log"
 )
@@ -78,7 +79,14 @@ type fakeTokenParser struct {
 	err    error
 }
 
-func (f *fakeTokenParser) Parse(string) (string, error) { return f.userID, f.err }
+func (f *fakeTokenParser) Parse(string) (string, error)                { return f.userID, f.err }
+func (f *fakeTokenParser) Issue(string, time.Duration) (string, error) { return "token", nil }
+func (f *fakeTokenParser) Verify(string) (public.AuthContext, error) {
+	if f.err != nil {
+		return public.AuthContext{}, f.err
+	}
+	return public.AuthContext{UserID: f.userID}, nil
+}
 
 func newTestServer(svc usersapp.Service, tp *fakeTokenParser) *httptest.Server {
 	router := phttp.NewRouter(phttp.RouterDeps{Logger: stubLogger{}, Timeout: time.Second}, func(r chi.Router) {

@@ -1,0 +1,40 @@
+package events
+
+import (
+	"context"
+	"encoding/json"
+
+	"github.com/google/uuid"
+
+	"github.com/vaaxooo/xbackend/internal/modules/users/application/common"
+	userevents "github.com/vaaxooo/xbackend/internal/modules/users/application/events"
+)
+
+const userRegisteredEventType = "users.user_registered"
+
+// OutboxPublisher converts typed application events into raw outbox messages so
+// they can be dispatched asynchronously by a background worker.
+type OutboxPublisher struct {
+	repo *OutboxRepository
+}
+
+func NewOutboxPublisher(repo *OutboxRepository) *OutboxPublisher {
+	return &OutboxPublisher{repo: repo}
+}
+
+func (p *OutboxPublisher) PublishUserRegistered(ctx context.Context, event userevents.UserRegistered) error {
+	payload, err := json.Marshal(event)
+	if err != nil {
+		return err
+	}
+
+	return p.repo.Add(ctx, OutboxMessage{
+		ID:         uuid.New(),
+		EventType:  userRegisteredEventType,
+		Payload:    payload,
+		OccurredAt: event.OccurredAt,
+	})
+}
+
+// Ensure OutboxPublisher conforms to application contract.
+var _ common.EventPublisher = (*OutboxPublisher)(nil)

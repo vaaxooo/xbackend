@@ -12,9 +12,11 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	usersevents "github.com/vaaxooo/xbackend/internal/modules/users/infrastructure/events"
 	pconfig "github.com/vaaxooo/xbackend/internal/platform/config"
 	phttp "github.com/vaaxooo/xbackend/internal/platform/http"
 	plog "github.com/vaaxooo/xbackend/internal/platform/log"
+	"github.com/vaaxooo/xbackend/internal/platform/outbox"
 )
 
 type Container struct {
@@ -24,6 +26,7 @@ type Container struct {
 	db      *sql.DB
 	modules *Modules
 	server  *phttp.Server
+	worker  *outbox.Worker
 }
 
 type Deps struct {
@@ -66,12 +69,15 @@ func NewContainer(deps Deps) (*Container, error) {
 		handler,
 	)
 
+	worker := outbox.NewWorker(mods.Users.Outbox, usersevents.NewLoggerDomainPublisher(deps.Logger), deps.Logger, outbox.Config{})
+
 	return &Container{
 		cfg:     deps.Config,
 		logger:  deps.Logger,
 		db:      deps.DB,
 		modules: mods,
 		server:  server,
+		worker:  worker,
 	}, nil
 }
 
@@ -87,6 +93,10 @@ func (c *Container) Run() error {
 			errCh <- err
 		}
 	}()
+
+	if c.worker != nil {
+		go c.worker.Run(ctx)
+	}
 
 	select {
 	case <-ctx.Done():

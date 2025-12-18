@@ -6,6 +6,7 @@ import (
 	"database/sql/driver"
 	"errors"
 	"fmt"
+	"io"
 	"regexp"
 	"sync"
 	"time"
@@ -51,7 +52,7 @@ func (r *Rows) Columns() []string { return r.columns }
 func (r *Rows) Close() error      { return nil }
 func (r *Rows) Next(dest []driver.Value) error {
 	if r.pos >= len(r.data) {
-		return errors.New("no more rows")
+		return io.EOF
 	}
 	copy(dest, r.data[r.pos])
 	r.pos++
@@ -78,6 +79,10 @@ type execExpectation struct {
 	err     error
 }
 
+type beginExpectation struct{ err error }
+type commitExpectation struct{ err error }
+type rollbackExpectation struct{ err error }
+
 func (e *execExpectation) match(query string, args []driver.Value) (driver.Result, *Rows, error) {
 	if !e.pattern.MatchString(query) {
 		return nil, nil, fmt.Errorf("unexpected exec query: %s", query)
@@ -100,6 +105,24 @@ func (e *execExpectation) WillReturnResult(res driver.Result) {
 }
 
 func (e *execExpectation) WillReturnError(err error) { e.err = err }
+
+func (e *beginExpectation) match(string, []driver.Value) (driver.Result, *Rows, error) {
+	return nil, nil, e.err
+}
+
+func (e *beginExpectation) isQuery() bool { return false }
+
+func (e *commitExpectation) match(string, []driver.Value) (driver.Result, *Rows, error) {
+	return nil, nil, e.err
+}
+
+func (e *commitExpectation) isQuery() bool { return false }
+
+func (e *rollbackExpectation) match(string, []driver.Value) (driver.Result, *Rows, error) {
+	return nil, nil, e.err
+}
+
+func (e *rollbackExpectation) isQuery() bool { return false }
 
 type queryExpectation struct {
 	pattern *regexp.Regexp
@@ -152,6 +175,30 @@ func (m *Mock) ExpectExec(pattern string) *execExpectation {
 	return exp
 }
 
+func (m *Mock) ExpectBegin() *beginExpectation {
+	exp := &beginExpectation{}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.expectations = append(m.expectations, exp)
+	return exp
+}
+
+func (m *Mock) ExpectCommit() *commitExpectation {
+	exp := &commitExpectation{}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.expectations = append(m.expectations, exp)
+	return exp
+}
+
+func (m *Mock) ExpectRollback() *rollbackExpectation {
+	exp := &rollbackExpectation{}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.expectations = append(m.expectations, exp)
+	return exp
+}
+
 func (m *Mock) ExpectQuery(pattern string) *queryExpectation {
 	exp := &queryExpectation{pattern: regexp.MustCompile(pattern)}
 	m.mu.Lock()
@@ -196,11 +243,68 @@ type mockConn struct {
 func (c *mockConn) Prepare(string) (driver.Stmt, error) {
 	return nil, errors.New("prepare not supported")
 }
-func (c *mockConn) Close() error              { return nil }
-func (c *mockConn) Begin() (driver.Tx, error) { return nil, errors.New("tx not supported") }
+func (c *mockConn) Close() error { return nil }
+func (c *mockConn) Begin() (driver.Tx, error) {
+	return c.BeginTx(context.Background(), driver.TxOptions{})
+}
+
+func (c *mockConn) BeginTx(context.Context, driver.TxOptions) (driver.Tx, error) {
+	exp := c.mock.nextExpectation()
+	if exp == nil {
+		return nil, errors.New("unexpected begin")
+	}
+	if _, _, err := exp.match("begin", nil); err != nil {
+		return nil, err
+	}
+	return &mockTx{mock: c.mock}, nil
+}
 
 func (c *mockConn) ExecContext(_ context.Context, query string, args []driver.NamedValue) (driver.Result, error) {
-	exp := c.mock.nextExpectation()
+	return c.mock.exec(query, args)
+}
+
+func (c *mockConn) QueryContext(_ context.Context, query string, args []driver.NamedValue) (driver.Rows, error) {
+	return c.mock.query(query, args)
+}
+
+func (c *mockConn) CheckNamedValue(nv *driver.NamedValue) error { return nil }
+
+type mockTx struct {
+	mock *Mock
+}
+
+func (t *mockTx) Commit() error {
+	exp := t.mock.nextExpectation()
+	if exp == nil {
+		return errors.New("unexpected commit")
+	}
+	if _, _, err := exp.match("commit", nil); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (t *mockTx) Rollback() error {
+	exp := t.mock.nextExpectation()
+	if exp == nil {
+		return nil
+	}
+	if _, _, err := exp.match("rollback", nil); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (t *mockTx) ExecContext(_ context.Context, query string, args []driver.NamedValue) (driver.Result, error) {
+	return t.mock.exec(query, args)
+}
+
+func (t *mockTx) QueryContext(_ context.Context, query string, args []driver.NamedValue) (driver.Rows, error) {
+	return t.mock.query(query, args)
+}
+
+func (m *Mock) exec(query string, args []driver.NamedValue) (driver.Result, error) {
+	exp := m.nextExpectation()
 	if exp == nil || exp.isQuery() {
 		return nil, fmt.Errorf("unexpected exec: %s", query)
 	}
@@ -208,16 +312,14 @@ func (c *mockConn) ExecContext(_ context.Context, query string, args []driver.Na
 	return res, err
 }
 
-func (c *mockConn) QueryContext(_ context.Context, query string, args []driver.NamedValue) (driver.Rows, error) {
-	exp := c.mock.nextExpectation()
+func (m *Mock) query(query string, args []driver.NamedValue) (driver.Rows, error) {
+	exp := m.nextExpectation()
 	if exp == nil || !exp.isQuery() {
 		return nil, fmt.Errorf("unexpected query: %s", query)
 	}
 	_, rows, err := exp.match(query, namedToValues(args))
 	return rows, err
 }
-
-func (c *mockConn) CheckNamedValue(nv *driver.NamedValue) error { return nil }
 
 func namedToValues(args []driver.NamedValue) []driver.Value {
 	values := make([]driver.Value, len(args))
