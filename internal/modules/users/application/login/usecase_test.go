@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/vaaxooo/xbackend/internal/modules/users/application/common"
 	"github.com/vaaxooo/xbackend/internal/modules/users/domain"
 )
 
@@ -82,7 +83,7 @@ func TestLoginSuccess(t *testing.T) {
 	identity := domain.Identity{UserID: user.ID, SecretHash: "hash"}
 
 	uow := &loginUnitOfWorkMock{}
-	uc := New(uow, &loginUsersRepoMock{user: user}, &loginIdentityRepoMock{identity: identity, found: true}, &loginRefreshRepoMock{}, &loginHasherMock{}, &loginIssuerMock{token: "access"}, time.Minute, time.Hour)
+	uc := common.NewTransactionalUseCase(uow, New(&loginUsersRepoMock{user: user}, &loginIdentityRepoMock{identity: identity, found: true}, &loginRefreshRepoMock{}, &loginHasherMock{}, &loginIssuerMock{token: "access"}, time.Minute, time.Hour))
 
 	out, err := uc.Execute(context.Background(), Input{Email: "user@example.com", Password: "password123"})
 	if err != nil {
@@ -97,13 +98,13 @@ func TestLoginSuccess(t *testing.T) {
 }
 
 func TestLoginInvalidCredentials(t *testing.T) {
-	uc := New(&loginUnitOfWorkMock{}, &loginUsersRepoMock{}, &loginIdentityRepoMock{}, &loginRefreshRepoMock{}, &loginHasherMock{}, &loginIssuerMock{}, 0, 0)
+	uc := common.NewTransactionalUseCase(&loginUnitOfWorkMock{}, New(&loginUsersRepoMock{}, &loginIdentityRepoMock{}, &loginRefreshRepoMock{}, &loginHasherMock{}, &loginIssuerMock{}, 0, 0))
 
 	if _, err := uc.Execute(context.Background(), Input{Email: "bad", Password: "pw"}); !errors.Is(err, domain.ErrInvalidCredentials) {
 		t.Fatalf("expected invalid credentials for bad email, got %v", err)
 	}
 
-	uc = New(&loginUnitOfWorkMock{}, &loginUsersRepoMock{}, &loginIdentityRepoMock{found: true, identity: domain.Identity{UserID: "user"}}, &loginRefreshRepoMock{}, &loginHasherMock{compareErr: errors.New("fail")}, &loginIssuerMock{}, 0, 0)
+	uc = common.NewTransactionalUseCase(&loginUnitOfWorkMock{}, New(&loginUsersRepoMock{}, &loginIdentityRepoMock{found: true, identity: domain.Identity{UserID: "user"}}, &loginRefreshRepoMock{}, &loginHasherMock{compareErr: errors.New("fail")}, &loginIssuerMock{}, 0, 0))
 	if _, err := uc.Execute(context.Background(), Input{Email: "user@example.com", Password: "pw"}); !errors.Is(err, domain.ErrInvalidCredentials) {
 		t.Fatalf("expected invalid credentials for compare failure, got %v", err)
 	}

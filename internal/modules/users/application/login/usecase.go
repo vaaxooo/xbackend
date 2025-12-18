@@ -9,7 +9,6 @@ import (
 )
 
 type UseCase struct {
-	uow        common.UnitOfWork
 	users      domain.UserRepository
 	identities domain.IdentityRepository
 	refresh    domain.RefreshTokenRepository
@@ -21,7 +20,6 @@ type UseCase struct {
 }
 
 func New(
-	uow common.UnitOfWork,
 	users domain.UserRepository,
 	identities domain.IdentityRepository,
 	refresh domain.RefreshTokenRepository,
@@ -37,7 +35,6 @@ func New(
 		refreshTTL = 30 * 24 * time.Hour
 	}
 	return &UseCase{
-		uow:        uow,
 		users:      users,
 		identities: identities,
 		refresh:    refresh,
@@ -86,12 +83,8 @@ func (uc *UseCase) Execute(ctx context.Context, in Input) (Output, error) {
 	refreshHash := common.HashToken(refreshRaw)
 
 	now := time.Now().UTC()
-	if err := uc.uow.Do(ctx, func(ctx context.Context) error {
-		return common.NormalizeError(
-			uc.refresh.Create(ctx, domain.NewRefreshTokenRecord(u.ID, refreshHash, now, uc.refreshTTL)),
-		)
-	}); err != nil {
-		return Output{}, err
+	if err := uc.refresh.Create(ctx, domain.NewRefreshTokenRecord(u.ID, refreshHash, now, uc.refreshTTL)); err != nil {
+		return Output{}, common.NormalizeError(err)
 	}
 
 	return Output{

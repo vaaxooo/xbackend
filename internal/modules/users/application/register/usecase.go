@@ -11,7 +11,6 @@ import (
 )
 
 type UseCase struct {
-	uow        common.UnitOfWork
 	users      domain.UserRepository
 	identities domain.IdentityRepository
 	refresh    domain.RefreshTokenRepository
@@ -25,7 +24,6 @@ type UseCase struct {
 }
 
 func New(
-	uow common.UnitOfWork,
 	users domain.UserRepository,
 	identities domain.IdentityRepository,
 	refresh domain.RefreshTokenRepository,
@@ -42,7 +40,6 @@ func New(
 		refreshTTL = 30 * 24 * time.Hour
 	}
 	return &UseCase{
-		uow:        uow,
 		users:      users,
 		identities: identities,
 		refresh:    refresh,
@@ -97,26 +94,20 @@ func (uc *UseCase) Execute(ctx context.Context, in Input) (login.Output, error) 
 		OccurredAt:  now,
 	}
 
-	if err := uc.uow.Do(ctx, func(ctx context.Context) error {
-		if err := uc.users.Create(ctx, user); err != nil {
-			return common.NormalizeError(err)
-		}
+	if err := uc.users.Create(ctx, user); err != nil {
+		return login.Output{}, common.NormalizeError(err)
+	}
 
-		if err := uc.identities.Create(ctx, identity); err != nil {
-			return common.NormalizeError(err)
-		}
+	if err := uc.identities.Create(ctx, identity); err != nil {
+		return login.Output{}, common.NormalizeError(err)
+	}
 
-		if err := uc.refresh.Create(ctx, refreshRecord); err != nil {
-			return common.NormalizeError(err)
-		}
+	if err := uc.refresh.Create(ctx, refreshRecord); err != nil {
+		return login.Output{}, common.NormalizeError(err)
+	}
 
-		if err := uc.events.PublishUserRegistered(ctx, event); err != nil {
-			return common.NormalizeError(err)
-		}
-
-		return nil
-	}); err != nil {
-		return login.Output{}, err
+	if err := uc.events.PublishUserRegistered(ctx, event); err != nil {
+		return login.Output{}, common.NormalizeError(err)
 	}
 
 	out := login.Output{

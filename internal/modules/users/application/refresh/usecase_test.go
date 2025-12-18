@@ -47,7 +47,7 @@ func TestRefreshSuccess(t *testing.T) {
 	now := time.Now().UTC()
 	repo := &refreshRepoMock{stored: domain.RefreshToken{ID: "id", UserID: "user", TokenHash: common.HashToken("old"), ExpiresAt: now.Add(time.Hour)}, found: true}
 	uow := &refreshUnitOfWorkMock{}
-	uc := New(uow, repo, &refreshIssuerMock{token: "access"}, time.Minute, time.Hour)
+	uc := common.NewTransactionalUseCase(uow, New(repo, &refreshIssuerMock{token: "access"}, time.Minute, time.Hour))
 
 	out, err := uc.Execute(context.Background(), Input{RefreshToken: "old"})
 	if err != nil {
@@ -63,14 +63,14 @@ func TestRefreshSuccess(t *testing.T) {
 
 func TestRefreshInvalid(t *testing.T) {
 	repo := &refreshRepoMock{found: false}
-	uc := New(&refreshUnitOfWorkMock{}, repo, &refreshIssuerMock{}, 0, 0)
+	uc := common.NewTransactionalUseCase(&refreshUnitOfWorkMock{}, New(repo, &refreshIssuerMock{}, 0, 0))
 
 	if _, err := uc.Execute(context.Background(), Input{RefreshToken: ""}); !errors.Is(err, domain.ErrRefreshTokenInvalid) {
 		t.Fatalf("expected invalid token on empty input, got %v", err)
 	}
 
 	repo = &refreshRepoMock{stored: domain.RefreshToken{ID: "id", ExpiresAt: time.Now().Add(-time.Hour)}, found: true}
-	uc = New(&refreshUnitOfWorkMock{}, repo, &refreshIssuerMock{}, 0, 0)
+	uc = common.NewTransactionalUseCase(&refreshUnitOfWorkMock{}, New(repo, &refreshIssuerMock{}, 0, 0))
 	if _, err := uc.Execute(context.Background(), Input{RefreshToken: "expired"}); !errors.Is(err, domain.ErrRefreshTokenInvalid) {
 		t.Fatalf("expected invalid token on expired, got %v", err)
 	}

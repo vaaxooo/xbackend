@@ -20,7 +20,7 @@ func TestUseCase_PublishesEventOnSuccess(t *testing.T) {
 	tokenIssuer := &stubTokenIssuer{}
 	publisher := &stubEventPublisher{}
 
-	uc := New(uow, users, identities, refresh, hasher, tokenIssuer, publisher, time.Minute, time.Hour)
+	uc := common.NewTransactionalUseCase(uow, New(users, identities, refresh, hasher, tokenIssuer, publisher, time.Minute, time.Hour))
 
 	_, err := uc.Execute(context.Background(), Input{Email: "john@example.com", Password: "verystrong", DisplayName: "John"})
 	if err != nil {
@@ -44,7 +44,7 @@ func TestUseCase_InvalidDisplayName(t *testing.T) {
 	tokenIssuer := &stubTokenIssuer{}
 	publisher := &stubEventPublisher{}
 
-	uc := New(uow, users, identities, refresh, hasher, tokenIssuer, publisher, time.Minute, time.Hour)
+	uc := common.NewTransactionalUseCase(uow, New(users, identities, refresh, hasher, tokenIssuer, publisher, time.Minute, time.Hour))
 
 	_, err := uc.Execute(context.Background(), Input{Email: "john@example.com", Password: "verystrong", DisplayName: " "})
 	if !errors.Is(err, domain.ErrInvalidDisplayName) {

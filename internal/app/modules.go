@@ -4,6 +4,7 @@ import (
 	"database/sql"
 
 	usersapp "github.com/vaaxooo/xbackend/internal/modules/users/application"
+	"github.com/vaaxooo/xbackend/internal/modules/users/application/common"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/link"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/login"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/profile"
@@ -70,15 +71,22 @@ func initUsersModule(deps ModuleDeps, cfg public.Config) (*UsersModule, error) {
 
 	eventPublisher := usersevents.NewOutboxPublisher(outboxRepo)
 
-	registerUC := register.New(uow, usersRepo, identityRepo, refreshRepo, hasher, authPort, eventPublisher, cfg.Auth.AccessTTL, cfg.Auth.RefreshTTL)
-	loginUC := login.New(uow, usersRepo, identityRepo, refreshRepo, hasher, authPort, cfg.Auth.AccessTTL, cfg.Auth.RefreshTTL)
-	refreshUC := refresh.New(uow, refreshRepo, authPort, cfg.Auth.AccessTTL, cfg.Auth.RefreshTTL)
+	registerUC := common.NewTransactionalUseCase(uow, register.New(usersRepo, identityRepo, refreshRepo, hasher, authPort, eventPublisher, cfg.Auth.AccessTTL, cfg.Auth.RefreshTTL))
+	loginUC := common.NewTransactionalUseCase(uow, login.New(usersRepo, identityRepo, refreshRepo, hasher, authPort, cfg.Auth.AccessTTL, cfg.Auth.RefreshTTL))
+	refreshUC := common.NewTransactionalUseCase(uow, refresh.New(refreshRepo, authPort, cfg.Auth.AccessTTL, cfg.Auth.RefreshTTL))
 
-	meUC := profile.NewGet(usersRepo)
-	profileUC := profile.NewUpdate(usersRepo)
+	meUC := common.NewTransactionalUseCase(uow, profile.NewGet(usersRepo))
+	profileUC := common.NewTransactionalUseCase(uow, profile.NewUpdate(usersRepo))
 	linkUC := link.New(identityRepo)
 
-	svc := usersapp.NewService(registerUC, loginUC, refreshUC, meUC, profileUC, linkUC)
+	svc := usersapp.NewService(
+		common.UseCaseHandler(registerUC),
+		common.UseCaseHandler(loginUC),
+		common.UseCaseHandler(refreshUC),
+		common.UseCaseHandler(meUC),
+		common.UseCaseHandler(profileUC),
+		common.UseCaseHandler(linkUC),
+	)
 
 	return &UsersModule{
 		Service: svc,
