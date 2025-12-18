@@ -31,6 +31,9 @@ func TestRegisterUseCaseWritesOutboxInsideTransaction(t *testing.T) {
 	publisher := events.NewOutboxPublisher(outboxRepo)
 	uc := New(uow, usersRepo, identitiesRepo, refreshRepo, stubHasher{}, stubTokenIssuer{}, publisher, time.Minute, time.Hour)
 
+	mock.ExpectQuery(`SELECT\s+id::text,\s+user_id::text,\s+provider,\s+provider_user_id,\s+COALESCE\(secret_hash, ''\),\s+created_at\s+FROM auth_identities\s+WHERE provider = \$1 AND provider_user_id = \$2\s+LIMIT 1`).
+		WithArgs("email", "john@example.com").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "user_id", "provider", "provider_user_id", "secret_hash", "created_at"}))
 	mock.ExpectBegin()
 	mock.ExpectExec(regexp.QuoteMeta("INSERT INTO users")).
 		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg()).
@@ -54,14 +57,3 @@ func TestRegisterUseCaseWritesOutboxInsideTransaction(t *testing.T) {
 		t.Fatalf("unmet expectations: %v", err)
 	}
 }
-
-// --- test doubles ---
-
-type stubHasher struct{}
-
-func (stubHasher) Hash(context.Context, string) (string, error)  { return "hash", nil }
-func (stubHasher) Compare(context.Context, string, string) error { return nil }
-
-type stubTokenIssuer struct{}
-
-func (stubTokenIssuer) Issue(string, time.Duration) (string, error) { return "token", nil }
