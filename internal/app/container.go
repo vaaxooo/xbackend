@@ -4,15 +4,15 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"github.com/go-chi/chi/v5"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
+	"github.com/go-chi/chi/v5"
+
 	pconfig "github.com/vaaxooo/xbackend/internal/platform/config"
-	pdb "github.com/vaaxooo/xbackend/internal/platform/db"
 	phttp "github.com/vaaxooo/xbackend/internal/platform/http"
 	plog "github.com/vaaxooo/xbackend/internal/platform/log"
 )
@@ -26,63 +26,57 @@ type Container struct {
 	server  *phttp.Server
 }
 
-func NewContainer(cfg *pconfig.Config) *Container {
-	return &Container{cfg: cfg}
+type Deps struct {
+	Config *pconfig.Config
+	Logger plog.Logger
+	DB     *sql.DB
 }
 
-func (c *Container) Run() error {
-	c.logger = plog.New(c.cfg.App.Env)
-
-	// Open infrastructure dependencies first (fail-fast on startup).
-	db, err := pdb.OpenPostgres(
-		c.cfg.DB.DSN,
-		c.cfg.DB.MaxOpenConnects,
-		c.cfg.DB.MaxIdleConnects,
-		c.cfg.DB.ConnMaxLife,
-	)
-	if err != nil {
-		c.logger.Error(context.Background(), "failed to open postgres", err)
-		return err
-	}
-	c.db = db
-	defer func() { _ = c.db.Close() }()
-
+func NewContainer(deps Deps) (*Container, error) {
 	// Initialize all modules (bounded contexts).
 	mods, err := InitModules(ModuleDeps{
-		DB:     c.db,
-		Logger: c.logger,
+		DB:     deps.DB,
+		Logger: deps.Logger,
 
-		AuthJWTSecret:  c.cfg.Auth.JWTSecret,
-		AuthAccessTTL:  c.cfg.Auth.AccessTTL,
-		AuthRefreshTTL: c.cfg.Auth.RefreshTTL,
+		AuthJWTSecret:  deps.Config.Auth.JWTSecret,
+		AuthAccessTTL:  deps.Config.Auth.AccessTTL,
+		AuthRefreshTTL: deps.Config.Auth.RefreshTTL,
 	})
 	if err != nil {
-		c.logger.Error(context.Background(), "failed to init modules", err)
-		return err
+		return nil, err
 	}
-	c.modules = mods
 
 	// Build HTTP router with versioned API registrations.
 	handler := phttp.NewRouter(
 		phttp.RouterDeps{
-			Logger:  c.logger,
+			Logger:  deps.Logger,
 			Timeout: 30 * time.Second,
 		},
-		func(r chi.Router) { RegisterAPIV1(r, c.modules) },
+		func(r chi.Router) { RegisterAPIV1(r, mods) },
 	)
 
-	c.server = phttp.NewServer(
+	server := phttp.NewServer(
 		phttp.ServerConfig{
-			Addr:              c.cfg.HTTP.Addr,
-			ReadTimeout:       c.cfg.HTTP.ReadTimeout,
-			ReadHeaderTimeout: c.cfg.HTTP.ReadHeaderTimeout,
-			WriteTimeout:      c.cfg.HTTP.WriteTimeout,
-			IdleTimeout:       c.cfg.HTTP.IdleTimeout,
-			MaxHeaderBytes:    c.cfg.HTTP.MaxHeaderBytes,
+			Addr:              deps.Config.HTTP.Addr,
+			ReadTimeout:       deps.Config.HTTP.ReadTimeout,
+			ReadHeaderTimeout: deps.Config.HTTP.ReadHeaderTimeout,
+			WriteTimeout:      deps.Config.HTTP.WriteTimeout,
+			IdleTimeout:       deps.Config.HTTP.IdleTimeout,
+			MaxHeaderBytes:    deps.Config.HTTP.MaxHeaderBytes,
 		},
 		handler,
 	)
 
+	return &Container{
+		cfg:     deps.Config,
+		logger:  deps.Logger,
+		db:      deps.DB,
+		modules: mods,
+		server:  server,
+	}, nil
+}
+
+func (c *Container) Run() error {
 	// Graceful shutdown on SIGINT/SIGTERM.
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
