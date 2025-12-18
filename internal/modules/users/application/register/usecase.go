@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/common"
+	"github.com/vaaxooo/xbackend/internal/modules/users/application/events"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/login"
 	"github.com/vaaxooo/xbackend/internal/modules/users/domain"
 )
@@ -19,6 +20,8 @@ type UseCase struct {
 	access     common.AccessTokenIssuer
 	accessTTL  time.Duration
 	refreshTTL time.Duration
+
+	events common.EventPublisher
 }
 
 func New(
@@ -28,6 +31,7 @@ func New(
 	refresh domain.RefreshTokenRepository,
 	hasher domain.PasswordHasher,
 	access common.AccessTokenIssuer,
+	events common.EventPublisher,
 	accessTTL time.Duration,
 	refreshTTL time.Duration,
 ) *UseCase {
@@ -44,6 +48,7 @@ func New(
 		refresh:    refresh,
 		hasher:     hasher,
 		access:     access,
+		events:     eventsOrNop(events),
 		accessTTL:  accessTTL,
 		refreshTTL: refreshTTL,
 	}
@@ -98,11 +103,31 @@ func (uc *UseCase) Execute(ctx context.Context, in Input) (login.Output, error) 
 		return login.Output{}, err
 	}
 
-	return login.Output{
+	out := login.Output{
 		UserID:       userID.String(),
 		DisplayName:  in.DisplayName,
 		AvatarURL:    "",
 		AccessToken:  accessToken,
 		RefreshToken: refreshRaw,
-	}, nil
+	}
+
+	event := events.UserRegistered{
+		UserID:      userID.String(),
+		Email:       email.String(),
+		DisplayName: in.DisplayName,
+		OccurredAt:  now,
+	}
+
+	if err := uc.events.PublishUserRegistered(ctx, event); err != nil {
+		return login.Output{}, common.NormalizeError(err)
+	}
+
+	return out, nil
+}
+
+func eventsOrNop(p common.EventPublisher) common.EventPublisher {
+	if p == nil {
+		return common.NopEventPublisher{}
+	}
+	return p
 }
