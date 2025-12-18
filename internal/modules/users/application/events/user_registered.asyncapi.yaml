@@ -1,0 +1,16 @@
+asyncapi: "2.6.0"
+info:
+  title: Users events
+  version: "1.0.0"
+  description: |-
+    Contract for the user registration integration event emitted by the users module.
+channels:
+  user.registered:
+    description: Published when a user completes the registration flow.
+    publish:
+      summary: UserRegistered notification
+      message:
+        name: UserRegistered
+        contentType: application/json
+        payload:
+          $ref: "./user_registered.schema.json"

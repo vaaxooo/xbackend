@@ -1,0 +1,245 @@
+openapi: 3.1.0
+info:
+  title: Users HTTP API
+  version: "1.0.0"
+  description: Contracts for the public v1 users HTTP endpoints.
+servers:
+  - url: /api/v1
+    description: Versioned gateway prefix
+paths:
+  /auth/register:
+    post:
+      summary: Register a new user
+      operationId: registerUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "./schemas/register_request.schema.json"
+      responses:
+        '201':
+          description: Account created
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas/login_response.schema.json"
+        '400':
+          description: Invalid payload
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas/error_response.schema.json"
+        '409':
+          description: Email already used
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas/error_response.schema.json"
+        '500':
+          description: Internal error
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas/error_response.schema.json"
+  /auth/login:
+    post:
+      summary: Login with email/password
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "./schemas/login_request.schema.json"
+      responses:
+        '200':
+          description: Authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas/login_response.schema.json"
+        '400':
+          description: Invalid payload
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas/error_response.schema.json"
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas/error_response.schema.json"
+        '500':
+          description: Internal error
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas/error_response.schema.json"
+  /auth/refresh:
+    post:
+      summary: Refresh access token
+      operationId: refreshToken
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "./schemas/refresh_request.schema.json"
+      responses:
+        '200':
+          description: Issued new tokens
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas/tokens_response.schema.json"
+        '400':
+          description: Invalid payload
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas/error_response.schema.json"
+        '401':
+          description: Invalid refresh token
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas/error_response.schema.json"
+        '500':
+          description: Internal error
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas/error_response.schema.json"
+  /auth/link:
+    post:
+      summary: Link an identity provider
+      operationId: linkProvider
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "./schemas/link_provider_request.schema.json"
+      responses:
+        '200':
+          description: Provider linked
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas/link_provider_response.schema.json"
+        '400':
+          description: Invalid payload
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas/error_response.schema.json"
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas/error_response.schema.json"
+        '409':
+          description: Provider already linked
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas/error_response.schema.json"
+        '500':
+          description: Internal error
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas/error_response.schema.json"
+  /me:
+    get:
+      summary: Get current user profile
+      operationId: getMe
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Profile found
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas/user_profile_response.schema.json"
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas/error_response.schema.json"
+        '500':
+          description: Internal error
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas/error_response.schema.json"
+    patch:
+      summary: Update profile
+      operationId: updateProfile
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "./schemas/update_profile_request.schema.json"
+      responses:
+        '200':
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas/user_profile_response.schema.json"
+        '400':
+          description: Invalid payload
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas/error_response.schema.json"
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas/error_response.schema.json"
+        '500':
+          description: Internal error
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas/error_response.schema.json"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    RegisterRequest:
+      $ref: "./schemas/register_request.schema.json"
+    LoginRequest:
+      $ref: "./schemas/login_request.schema.json"
+    RefreshRequest:
+      $ref: "./schemas/refresh_request.schema.json"
+    UpdateProfileRequest:
+      $ref: "./schemas/update_profile_request.schema.json"
+    LinkProviderRequest:
+      $ref: "./schemas/link_provider_request.schema.json"
+    UserProfileResponse:
+      $ref: "./schemas/user_profile_response.schema.json"
+    TokensResponse:
+      $ref: "./schemas/tokens_response.schema.json"
+    LoginResponse:
+      $ref: "./schemas/login_response.schema.json"
+    LinkProviderResponse:
+      $ref: "./schemas/link_provider_response.schema.json"
+    ErrorResponse:
+      $ref: "./schemas/error_response.schema.json"

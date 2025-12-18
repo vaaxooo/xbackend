@@ -1,0 +1,16 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "provider": {
+      "type": "string"
+    },
+    "provider_user_id": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "provider",
+    "provider_user_id"
+  ]
+}

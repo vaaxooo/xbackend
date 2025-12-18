@@ -1,5 +1,3 @@
-//go:build integration
-
 package users
 
 import (
@@ -7,8 +5,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -29,6 +30,7 @@ import (
 	usersdb "github.com/vaaxooo/xbackend/internal/platform/db/users"
 	phttp "github.com/vaaxooo/xbackend/internal/platform/http"
 	"github.com/vaaxooo/xbackend/internal/platform/log"
+	"github.com/vaaxooo/xbackend/internal/test/contracts"
 )
 
 type stubLogger struct{}
@@ -121,10 +123,9 @@ func TestRegisterEndpoint(t *testing.T) {
 	if resp.StatusCode != http.StatusCreated {
 		t.Fatalf("expected 201, got %d", resp.StatusCode)
 	}
-	var out map[string]any
-	_ = json.NewDecoder(resp.Body).Decode(&out)
-	if out["access_token"] != "acc" || out["refresh_token"] != "ref" {
-		t.Fatalf("unexpected tokens: %+v", out)
+	payload := validateAgainstSchema(t, resp, "login_response.schema.json")
+	if payload["access_token"] != "acc" || payload["refresh_token"] != "ref" {
+		t.Fatalf("unexpected tokens: %+v", payload)
 	}
 }
 
@@ -138,6 +139,9 @@ func TestLoginUnauthorized(t *testing.T) {
 	if resp.StatusCode != http.StatusUnauthorized {
 		t.Fatalf("expected 401, got %d", resp.StatusCode)
 	}
+	defer resp.Body.Close()
+
+	validateAgainstSchema(t, resp, "error_response.schema.json")
 }
 
 func TestProfileEndpoints(t *testing.T) {
@@ -155,6 +159,8 @@ func TestProfileEndpoints(t *testing.T) {
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
 	}
+	defer resp.Body.Close()
+	validateAgainstSchema(t, resp, "user_profile_response.schema.json")
 
 	updateBody, _ := json.Marshal(map[string]string{"first_name": "New"})
 	req, _ = http.NewRequest(http.MethodPatch, server.URL+"/api/v1/me", bytes.NewReader(updateBody))
@@ -163,6 +169,8 @@ func TestProfileEndpoints(t *testing.T) {
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200 on update, got %d", resp.StatusCode)
 	}
+	defer resp.Body.Close()
+	validateAgainstSchema(t, resp, "user_profile_response.schema.json")
 }
 
 func TestRefreshUnauthorized(t *testing.T) {
@@ -175,6 +183,8 @@ func TestRefreshUnauthorized(t *testing.T) {
 	if resp.StatusCode != http.StatusUnauthorized {
 		t.Fatalf("expected 401, got %d", resp.StatusCode)
 	}
+	defer resp.Body.Close()
+	validateAgainstSchema(t, resp, "error_response.schema.json")
 }
 
 func TestLinkConflict(t *testing.T) {
@@ -190,6 +200,8 @@ func TestLinkConflict(t *testing.T) {
 	if resp.StatusCode != http.StatusConflict {
 		t.Fatalf("expected 409, got %d", resp.StatusCode)
 	}
+	defer resp.Body.Close()
+	validateAgainstSchema(t, resp, "error_response.schema.json")
 }
 
 func TestRegisterEndpointTransactionalCommit(t *testing.T) {
@@ -255,6 +267,8 @@ func TestRegisterEndpointTransactionalCommit(t *testing.T) {
 		t.Fatalf("expected 201, got %d", resp.StatusCode)
 	}
 
+	validateAgainstSchema(t, resp, "login_response.schema.json")
+
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Fatalf("db expectations: %v", err)
 	}
@@ -318,7 +332,40 @@ func TestRegisterEndpointRollbackOnFailure(t *testing.T) {
 		t.Fatalf("expected 500 on failure, got %d", resp.StatusCode)
 	}
 
+	validateAgainstSchema(t, resp, "error_response.schema.json")
+
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Fatalf("db expectations: %v", err)
 	}
+}
+
+func validateAgainstSchema(t *testing.T, resp *http.Response, schemaName string) map[string]any {
+	t.Helper()
+	schema := loadSchema(t, schemaName)
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("read body: %v", err)
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(data, &payload); err != nil {
+		t.Fatalf("decode body: %v", err)
+	}
+	if err := contracts.ValidateSchema(schema, payload); err != nil {
+		t.Fatalf("schema validation failed: %v; body=%s", err, string(data))
+	}
+	return payload
+}
+
+func loadSchema(t *testing.T, name string) map[string]any {
+	t.Helper()
+	path := filepath.Join("schemas", name)
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read schema %s: %v", name, err)
+	}
+	schema, err := contracts.LoadSchema(raw)
+	if err != nil {
+		t.Fatalf("decode schema %s: %v", name, err)
+	}
+	return schema
 }
