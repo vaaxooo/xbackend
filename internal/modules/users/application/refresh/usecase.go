@@ -9,7 +9,6 @@ import (
 )
 
 type UseCase struct {
-	uow         common.UnitOfWork
 	refreshRepo domain.RefreshTokenRepository
 
 	access     common.AccessTokenIssuer
@@ -18,7 +17,6 @@ type UseCase struct {
 }
 
 func New(
-	uow common.UnitOfWork,
 	refreshRepo domain.RefreshTokenRepository,
 	access common.AccessTokenIssuer,
 	accessTTL time.Duration,
@@ -31,7 +29,6 @@ func New(
 		refreshTTL = 30 * 24 * time.Hour
 	}
 	return &UseCase{
-		uow:         uow,
 		refreshRepo: refreshRepo,
 		access:      access,
 		accessTTL:   accessTTL,
@@ -67,15 +64,11 @@ func (uc *UseCase) Execute(ctx context.Context, in Input) (Output, error) {
 		return Output{}, common.NormalizeError(err)
 	}
 	newHash := common.HashToken(newRefresh)
-	if err := uc.uow.Do(ctx, func(ctx context.Context) error {
-		if err := uc.refreshRepo.Revoke(ctx, stored.ID); err != nil {
-			return common.NormalizeError(err)
-		}
-		return common.NormalizeError(
-			uc.refreshRepo.Create(ctx, domain.NewRefreshTokenRecord(stored.UserID, newHash, now, uc.refreshTTL)),
-		)
-	}); err != nil {
-		return Output{}, err
+	if err := uc.refreshRepo.Revoke(ctx, stored.ID); err != nil {
+		return Output{}, common.NormalizeError(err)
+	}
+	if err := uc.refreshRepo.Create(ctx, domain.NewRefreshTokenRecord(stored.UserID, newHash, now, uc.refreshTTL)); err != nil {
+		return Output{}, common.NormalizeError(err)
 	}
 
 	return Output{

@@ -10,6 +10,7 @@ import (
 
 	"github.com/DATA-DOG/go-sqlmock"
 
+	"github.com/vaaxooo/xbackend/internal/modules/users/application/common"
 	"github.com/vaaxooo/xbackend/internal/modules/users/infrastructure/events"
 	pdb "github.com/vaaxooo/xbackend/internal/platform/db"
 	usersdb "github.com/vaaxooo/xbackend/internal/platform/db/users"
@@ -29,7 +30,7 @@ func TestRegisterUseCaseWritesOutboxInsideTransaction(t *testing.T) {
 	outboxRepo := events.NewOutboxRepository(db)
 
 	publisher := events.NewOutboxPublisher(outboxRepo)
-	uc := New(uow, usersRepo, identitiesRepo, refreshRepo, stubHasher{}, stubTokenIssuer{}, publisher, time.Minute, time.Hour)
+	uc := common.NewTransactionalUseCase(uow, New(usersRepo, identitiesRepo, refreshRepo, stubHasher{}, stubTokenIssuer{}, publisher, time.Minute, time.Hour))
 
 	mock.ExpectQuery(`SELECT\s+id::text,\s+user_id::text,\s+provider,\s+provider_user_id,\s+COALESCE\(secret_hash, ''\),\s+created_at\s+FROM auth_identities\s+WHERE provider = \$1 AND provider_user_id = \$2\s+LIMIT 1`).
 		WithArgs("email", "john@example.com").

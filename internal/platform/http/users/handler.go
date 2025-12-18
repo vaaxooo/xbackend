@@ -1,11 +1,16 @@
 package users
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
 
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/common"
+	"github.com/vaaxooo/xbackend/internal/modules/users/application/link"
+	"github.com/vaaxooo/xbackend/internal/modules/users/application/login"
+	"github.com/vaaxooo/xbackend/internal/modules/users/application/profile"
+	"github.com/vaaxooo/xbackend/internal/modules/users/application/refresh"
 	"github.com/vaaxooo/xbackend/internal/modules/users/domain"
 	usersapi "github.com/vaaxooo/xbackend/internal/modules/users/public"
 	"github.com/vaaxooo/xbackend/internal/platform/http/users/dto"
@@ -15,11 +20,39 @@ import (
 )
 
 type Handler struct {
-	svc usersapi.Service
+	middleware phttp.UseCaseMiddleware
+
+	register phttp.UseCaseHandler[usersapi.RegisterInput, login.Output]
+	login    phttp.UseCaseHandler[usersapi.LoginInput, login.Output]
+	refresh  phttp.UseCaseHandler[usersapi.RefreshInput, refresh.Output]
+
+	getMe  phttp.UseCaseHandler[usersapi.GetProfileInput, profile.Output]
+	update phttp.UseCaseHandler[usersapi.UpdateProfileInput, profile.Output]
+	link   phttp.UseCaseHandler[usersapi.LinkProviderInput, link.Output]
 }
 
-func NewHandler(svc usersapi.Service) *Handler {
-	return &Handler{svc: svc}
+func NewHandler(svc usersapi.Service, middleware phttp.UseCaseMiddleware) *Handler {
+	return &Handler{
+		middleware: middleware,
+		register: phttp.UseCaseFunc[usersapi.RegisterInput, login.Output](func(ctx context.Context, cmd usersapi.RegisterInput) (login.Output, error) {
+			return svc.Register(ctx, cmd)
+		}),
+		login: phttp.UseCaseFunc[usersapi.LoginInput, login.Output](func(ctx context.Context, cmd usersapi.LoginInput) (login.Output, error) {
+			return svc.Login(ctx, cmd)
+		}),
+		refresh: phttp.UseCaseFunc[usersapi.RefreshInput, refresh.Output](func(ctx context.Context, cmd usersapi.RefreshInput) (refresh.Output, error) {
+			return svc.Refresh(ctx, cmd)
+		}),
+		getMe: phttp.UseCaseFunc[usersapi.GetProfileInput, profile.Output](func(ctx context.Context, cmd usersapi.GetProfileInput) (profile.Output, error) {
+			return svc.GetMe(ctx, cmd)
+		}),
+		update: phttp.UseCaseFunc[usersapi.UpdateProfileInput, profile.Output](func(ctx context.Context, cmd usersapi.UpdateProfileInput) (profile.Output, error) {
+			return svc.UpdateProfile(ctx, cmd)
+		}),
+		link: phttp.UseCaseFunc[usersapi.LinkProviderInput, link.Output](func(ctx context.Context, cmd usersapi.LinkProviderInput) (link.Output, error) {
+			return svc.LinkProvider(ctx, cmd)
+		}),
+	}
 }
 
 func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
@@ -29,7 +62,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	out, err := h.svc.Register(r.Context(), usersapi.RegisterInput{
+	out, err := phttp.HandleUseCase(h.middleware, r, h.register, usersapi.RegisterInput{
 		Email:       req.Email,
 		Password:    req.Password,
 		DisplayName: req.DisplayName,
@@ -63,7 +96,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	out, err := h.svc.Login(r.Context(), usersapi.LoginInput{
+	out, err := phttp.HandleUseCase(h.middleware, r, h.login, usersapi.LoginInput{
 		Email:    req.Email,
 		Password: req.Password,
 	})
@@ -96,7 +129,7 @@ func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	out, err := h.svc.Refresh(r.Context(), usersapi.RefreshInput{
+	out, err := phttp.HandleUseCase(h.middleware, r, h.refresh, usersapi.RefreshInput{
 		RefreshToken: req.RefreshToken,
 	})
 	if err != nil {
@@ -118,7 +151,7 @@ func (h *Handler) GetMe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	out, err := h.svc.GetMe(r.Context(), usersapi.GetProfileInput{
+	out, err := phttp.HandleUseCase(h.middleware, r, h.getMe, usersapi.GetProfileInput{
 		UserID: uid,
 	})
 	if err != nil {
@@ -150,7 +183,7 @@ func (h *Handler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	out, err := h.svc.UpdateProfile(r.Context(), usersapi.UpdateProfileInput{
+	out, err := phttp.HandleUseCase(h.middleware, r, h.update, usersapi.UpdateProfileInput{
 		UserID:      uid,
 		FirstName:   req.FirstName,
 		LastName:    req.LastName,
@@ -187,7 +220,7 @@ func (h *Handler) LinkProvider(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	out, err := h.svc.LinkProvider(r.Context(), usersapi.LinkProviderInput{
+	out, err := phttp.HandleUseCase(h.middleware, r, h.link, usersapi.LinkProviderInput{
 		UserID:         uid,
 		Provider:       req.Provider,
 		ProviderUserID: req.ProviderUserID,
