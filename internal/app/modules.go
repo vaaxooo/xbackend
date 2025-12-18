@@ -36,6 +36,7 @@ type ModuleDeps struct {
 type UsersModule struct {
 	Service usersapp.Service
 	Auth    public.AuthPort
+	Outbox  *usersevents.OutboxRepository
 }
 
 type ModulesConfig struct {
@@ -57,6 +58,7 @@ func initUsersModule(deps ModuleDeps, cfg public.Config) (*UsersModule, error) {
 	usersRepo := usersdb.NewUserRepo(deps.DB)
 	identityRepo := usersdb.NewIdentityRepo(deps.DB)
 	refreshRepo := usersdb.NewRefreshRepo(deps.DB)
+	outboxRepo := usersevents.NewOutboxRepository(deps.DB)
 	uow := pdb.NewUnitOfWork(deps.DB)
 
 	hasher := userscrypto.NewBcryptHasher(0)
@@ -66,7 +68,7 @@ func initUsersModule(deps ModuleDeps, cfg public.Config) (*UsersModule, error) {
 		return nil, err
 	}
 
-	eventPublisher := usersevents.NewLoggerPublisher(deps.Logger)
+	eventPublisher := usersevents.NewOutboxPublisher(outboxRepo)
 
 	registerUC := register.New(uow, usersRepo, identityRepo, refreshRepo, hasher, authPort, eventPublisher, cfg.Auth.AccessTTL, cfg.Auth.RefreshTTL)
 	loginUC := login.New(uow, usersRepo, identityRepo, refreshRepo, hasher, authPort, cfg.Auth.AccessTTL, cfg.Auth.RefreshTTL)
@@ -81,5 +83,6 @@ func initUsersModule(deps ModuleDeps, cfg public.Config) (*UsersModule, error) {
 	return &UsersModule{
 		Service: svc,
 		Auth:    authPort,
+		Outbox:  outboxRepo,
 	}, nil
 }

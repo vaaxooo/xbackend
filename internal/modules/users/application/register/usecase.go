@@ -85,6 +85,13 @@ func (uc *UseCase) Execute(ctx context.Context, in Input) (login.Output, error) 
 	refreshHash := common.HashToken(refreshRaw)
 	refreshRecord := domain.NewRefreshTokenRecord(userID, refreshHash, now, uc.refreshTTL)
 
+	event := events.UserRegistered{
+		UserID:      userID.String(),
+		Email:       email.String(),
+		DisplayName: in.DisplayName,
+		OccurredAt:  now,
+	}
+
 	if err := uc.uow.Do(ctx, func(ctx context.Context) error {
 		if err := uc.users.Create(ctx, user); err != nil {
 			return common.NormalizeError(err)
@@ -95,6 +102,10 @@ func (uc *UseCase) Execute(ctx context.Context, in Input) (login.Output, error) 
 		}
 
 		if err := uc.refresh.Create(ctx, refreshRecord); err != nil {
+			return common.NormalizeError(err)
+		}
+
+		if err := uc.events.PublishUserRegistered(ctx, event); err != nil {
 			return common.NormalizeError(err)
 		}
 
@@ -109,17 +120,6 @@ func (uc *UseCase) Execute(ctx context.Context, in Input) (login.Output, error) 
 		AvatarURL:    "",
 		AccessToken:  accessToken,
 		RefreshToken: refreshRaw,
-	}
-
-	event := events.UserRegistered{
-		UserID:      userID.String(),
-		Email:       email.String(),
-		DisplayName: in.DisplayName,
-		OccurredAt:  now,
-	}
-
-	if err := uc.events.PublishUserRegistered(ctx, event); err != nil {
-		return login.Output{}, common.NormalizeError(err)
 	}
 
 	return out, nil
