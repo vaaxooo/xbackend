@@ -1,0 +1,32 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "avatar_url": {
+      "type": "string"
+    },
+    "display_name": {
+      "type": "string"
+    },
+    "first_name": {
+      "type": "string"
+    },
+    "last_name": {
+      "type": "string"
+    },
+    "middle_name": {
+      "type": "string"
+    },
+    "user_id": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "avatar_url",
+    "display_name",
+    "first_name",
+    "last_name",
+    "middle_name",
+    "user_id"
+  ]
+}
