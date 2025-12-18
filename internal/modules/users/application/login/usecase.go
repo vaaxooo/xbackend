@@ -9,7 +9,7 @@ import (
 )
 
 type UseCase struct {
-	tx         common.Transactor
+	uow        common.UnitOfWork
 	users      domain.UserRepository
 	identities domain.IdentityRepository
 	refresh    domain.RefreshTokenRepository
@@ -21,7 +21,7 @@ type UseCase struct {
 }
 
 func New(
-	tx common.Transactor,
+	uow common.UnitOfWork,
 	users domain.UserRepository,
 	identities domain.IdentityRepository,
 	refresh domain.RefreshTokenRepository,
@@ -37,7 +37,7 @@ func New(
 		refreshTTL = 30 * 24 * time.Hour
 	}
 	return &UseCase{
-		tx:         tx,
+		uow:        uow,
 		users:      users,
 		identities: identities,
 		refresh:    refresh,
@@ -56,7 +56,7 @@ func (uc *UseCase) Execute(ctx context.Context, in Input) (Output, error) {
 
 	ident, found, err := uc.identities.GetByProvider(ctx, email.Provider(), email.String())
 	if err != nil {
-		return Output{}, err
+		return Output{}, common.NormalizeError(err)
 	}
 	if !found {
 		return Output{}, domain.ErrInvalidCredentials
@@ -68,7 +68,7 @@ func (uc *UseCase) Execute(ctx context.Context, in Input) (Output, error) {
 
 	u, ok, err := uc.users.GetByID(ctx, ident.UserID)
 	if err != nil {
-		return Output{}, err
+		return Output{}, common.NormalizeError(err)
 	}
 	if !ok {
 		return Output{}, domain.ErrInvalidCredentials
@@ -76,18 +76,20 @@ func (uc *UseCase) Execute(ctx context.Context, in Input) (Output, error) {
 
 	accessToken, err := uc.access.Issue(u.ID.String(), uc.accessTTL)
 	if err != nil {
-		return Output{}, err
+		return Output{}, common.NormalizeError(err)
 	}
 
 	refreshRaw, err := common.NewRefreshToken()
 	if err != nil {
-		return Output{}, err
+		return Output{}, common.NormalizeError(err)
 	}
 	refreshHash := common.HashToken(refreshRaw)
 
 	now := time.Now().UTC()
-	if err := uc.tx.WithinTx(ctx, func(ctx context.Context) error {
-		return uc.refresh.Create(ctx, domain.NewRefreshTokenRecord(u.ID, refreshHash, now, uc.refreshTTL))
+	if err := uc.uow.Do(ctx, func(ctx context.Context) error {
+		return common.NormalizeError(
+			uc.refresh.Create(ctx, domain.NewRefreshTokenRecord(u.ID, refreshHash, now, uc.refreshTTL)),
+		)
 	}); err != nil {
 		return Output{}, err
 	}

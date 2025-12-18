@@ -7,20 +7,15 @@ import (
 
 type txKey struct{}
 
-// Transactor provides a simple Unit of Work boundary.
-type Transactor interface {
-	WithinTx(ctx context.Context, fn func(ctx context.Context) error) error
-}
-
-type postgresTransactor struct {
+type postgresUnitOfWork struct {
 	db *sql.DB
 }
 
-func NewTransactor(db *sql.DB) Transactor {
-	return &postgresTransactor{db: db}
+func NewUnitOfWork(db *sql.DB) *postgresUnitOfWork {
+	return &postgresUnitOfWork{db: db}
 }
 
-func (t *postgresTransactor) WithinTx(ctx context.Context, fn func(ctx context.Context) error) error {
+func (t *postgresUnitOfWork) Do(ctx context.Context, fn func(ctx context.Context) error) error {
 	tx, err := t.db.BeginTx(ctx, &sql.TxOptions{})
 	if err != nil {
 		return err

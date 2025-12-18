@@ -9,7 +9,7 @@ import (
 )
 
 type UseCase struct {
-	tx          common.Transactor
+	uow         common.UnitOfWork
 	refreshRepo domain.RefreshTokenRepository
 
 	access     common.AccessTokenIssuer
@@ -18,7 +18,7 @@ type UseCase struct {
 }
 
 func New(
-	tx common.Transactor,
+	uow common.UnitOfWork,
 	refreshRepo domain.RefreshTokenRepository,
 	access common.AccessTokenIssuer,
 	accessTTL time.Duration,
@@ -31,7 +31,7 @@ func New(
 		refreshTTL = 30 * 24 * time.Hour
 	}
 	return &UseCase{
-		tx:          tx,
+		uow:         uow,
 		refreshRepo: refreshRepo,
 		access:      access,
 		accessTTL:   accessTTL,
@@ -47,7 +47,7 @@ func (uc *UseCase) Execute(ctx context.Context, in Input) (Output, error) {
 	hash := common.HashToken(in.RefreshToken)
 	stored, found, err := uc.refreshRepo.GetByHash(ctx, hash)
 	if err != nil {
-		return Output{}, err
+		return Output{}, common.NormalizeError(err)
 	}
 	now := time.Now().UTC()
 	if !found || !stored.IsValid(now) {
@@ -59,19 +59,21 @@ func (uc *UseCase) Execute(ctx context.Context, in Input) (Output, error) {
 
 	accessToken, err := uc.access.Issue(stored.UserID.String(), uc.accessTTL)
 	if err != nil {
-		return Output{}, err
+		return Output{}, common.NormalizeError(err)
 	}
 
 	newRefresh, err := common.NewRefreshToken()
 	if err != nil {
-		return Output{}, err
+		return Output{}, common.NormalizeError(err)
 	}
 	newHash := common.HashToken(newRefresh)
-	if err := uc.tx.WithinTx(ctx, func(ctx context.Context) error {
+	if err := uc.uow.Do(ctx, func(ctx context.Context) error {
 		if err := uc.refreshRepo.Revoke(ctx, stored.ID); err != nil {
-			return err
+			return common.NormalizeError(err)
 		}
-		return uc.refreshRepo.Create(ctx, domain.NewRefreshTokenRecord(stored.UserID, newHash, now, uc.refreshTTL))
+		return common.NormalizeError(
+			uc.refreshRepo.Create(ctx, domain.NewRefreshTokenRecord(stored.UserID, newHash, now, uc.refreshTTL)),
+		)
 	}); err != nil {
 		return Output{}, err
 	}
