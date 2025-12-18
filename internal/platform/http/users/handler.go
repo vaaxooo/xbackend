@@ -5,14 +5,9 @@ import (
 	"errors"
 	"net/http"
 
-	usersapp "github.com/vaaxooo/xbackend/internal/modules/users/application"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/common"
-	"github.com/vaaxooo/xbackend/internal/modules/users/application/link"
-	"github.com/vaaxooo/xbackend/internal/modules/users/application/login"
-	"github.com/vaaxooo/xbackend/internal/modules/users/application/profile"
-	"github.com/vaaxooo/xbackend/internal/modules/users/application/refresh"
-	"github.com/vaaxooo/xbackend/internal/modules/users/application/register"
 	"github.com/vaaxooo/xbackend/internal/modules/users/domain"
+	usersapi "github.com/vaaxooo/xbackend/internal/modules/users/public"
 	"github.com/vaaxooo/xbackend/internal/platform/http/users/dto"
 	"github.com/vaaxooo/xbackend/internal/platform/http/users/httpctx"
 
@@ -20,10 +15,10 @@ import (
 )
 
 type Handler struct {
-	svc usersapp.Service
+	svc usersapi.Service
 }
 
-func NewHandler(svc usersapp.Service) *Handler {
+func NewHandler(svc usersapi.Service) *Handler {
 	return &Handler{svc: svc}
 }
 
@@ -34,7 +29,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	out, err := h.svc.Register(r.Context(), register.Input{
+	out, err := h.svc.Register(r.Context(), usersapi.RegisterInput{
 		Email:       req.Email,
 		Password:    req.Password,
 		DisplayName: req.DisplayName,
@@ -68,7 +63,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	out, err := h.svc.Login(r.Context(), login.Input{
+	out, err := h.svc.Login(r.Context(), usersapi.LoginInput{
 		Email:    req.Email,
 		Password: req.Password,
 	})
@@ -101,7 +96,7 @@ func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	out, err := h.svc.Refresh(r.Context(), refresh.Input{
+	out, err := h.svc.Refresh(r.Context(), usersapi.RefreshInput{
 		RefreshToken: req.RefreshToken,
 	})
 	if err != nil {
@@ -123,7 +118,7 @@ func (h *Handler) GetMe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	out, err := h.svc.GetMe(r.Context(), profile.GetInput{
+	out, err := h.svc.GetMe(r.Context(), usersapi.GetProfileInput{
 		UserID: uid,
 	})
 	if err != nil {
@@ -155,7 +150,7 @@ func (h *Handler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	out, err := h.svc.UpdateProfile(r.Context(), profile.UpdateInput{
+	out, err := h.svc.UpdateProfile(r.Context(), usersapi.UpdateProfileInput{
 		UserID:      uid,
 		FirstName:   req.FirstName,
 		LastName:    req.LastName,
@@ -192,7 +187,7 @@ func (h *Handler) LinkProvider(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	out, err := h.svc.LinkProvider(r.Context(), link.Input{
+	out, err := h.svc.LinkProvider(r.Context(), usersapi.LinkProviderInput{
 		UserID:         uid,
 		Provider:       req.Provider,
 		ProviderUserID: req.ProviderUserID,

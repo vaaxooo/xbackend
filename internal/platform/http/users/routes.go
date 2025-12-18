@@ -4,12 +4,12 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	usersapp "github.com/vaaxooo/xbackend/internal/modules/users/application"
+	"github.com/vaaxooo/xbackend/internal/modules/users/public"
 	"github.com/vaaxooo/xbackend/internal/platform/http/users/middleware"
 	phttp "github.com/vaaxooo/xbackend/internal/platform/middleware"
 )
 
-func RegisterV1(r chi.Router, svc usersapp.Service, tp middleware.TokenParser) {
+func RegisterV1(r chi.Router, svc public.Service, auth public.AuthPort) {
 	h := NewHandler(svc)
 
 	r.Route("/auth", func(r chi.Router) {
@@ -19,13 +19,13 @@ func RegisterV1(r chi.Router, svc usersapp.Service, tp middleware.TokenParser) {
 		r.With(phttp.RateLimit(20, time.Minute)).Post("/refresh", h.Refresh)
 
 		r.Group(func(r chi.Router) {
-			r.Use(middleware.RequireJWT(tp))
+			r.Use(middleware.RequireJWT(auth))
 			r.Post("/link", h.LinkProvider)
 		})
 	})
 
 	r.Group(func(r chi.Router) {
-		r.Use(middleware.RequireJWT(tp))
+		r.Use(middleware.RequireJWT(auth))
 		r.Get("/me", h.GetMe)
 		r.Patch("/me", h.UpdateProfile)
 	})

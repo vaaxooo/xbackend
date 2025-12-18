@@ -34,14 +34,13 @@ type Deps struct {
 
 func NewContainer(deps Deps) (*Container, error) {
 	// Initialize all modules (bounded contexts).
-	mods, err := InitModules(ModuleDeps{
-		DB:     deps.DB,
-		Logger: deps.Logger,
-
-		AuthJWTSecret:  deps.Config.Auth.JWTSecret,
-		AuthAccessTTL:  deps.Config.Auth.AccessTTL,
-		AuthRefreshTTL: deps.Config.Auth.RefreshTTL,
-	})
+	mods, err := InitModules(
+		ModuleDeps{
+			DB:     deps.DB,
+			Logger: deps.Logger,
+		},
+		ModulesConfig{Users: UsersConfig(deps.Config)},
+	)
 	if err != nil {
 		return nil, err
 	}
