@@ -2,10 +2,10 @@ package http
 
 import (
 	"github.com/go-chi/chi/v5"
-	"github.com/vaaxooo/xbackend/internal/modules/users/transport/middleware"
+	"github.com/vaaxooo/xbackend/internal/modules/users/infrastructure/transport/middleware"
 	phttp "github.com/vaaxooo/xbackend/internal/platform/middleware"
 
-	usersapp "github.com/vaaxooo/xbackend/internal/modules/users/app"
+	usersapp "github.com/vaaxooo/xbackend/internal/modules/users/application"
 
 	"time"
 )

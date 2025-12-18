@@ -3,7 +3,7 @@ package http
 import (
 	"context"
 
-	"github.com/vaaxooo/xbackend/internal/modules/users/transport/httpctx"
+	"github.com/vaaxooo/xbackend/internal/modules/users/infrastructure/transport/httpctx"
 )
 
 // UserIDFromContext extracts the authenticated user id from the request context.

@@ -1,13 +1,13 @@
-package app
+package application
 
 import (
 	"context"
 
-	"github.com/vaaxooo/xbackend/internal/modules/users/app/link"
-	"github.com/vaaxooo/xbackend/internal/modules/users/app/login"
-	"github.com/vaaxooo/xbackend/internal/modules/users/app/profile"
-	"github.com/vaaxooo/xbackend/internal/modules/users/app/refresh"
-	"github.com/vaaxooo/xbackend/internal/modules/users/app/register"
+	"github.com/vaaxooo/xbackend/internal/modules/users/application/link"
+	"github.com/vaaxooo/xbackend/internal/modules/users/application/login"
+	"github.com/vaaxooo/xbackend/internal/modules/users/application/profile"
+	"github.com/vaaxooo/xbackend/internal/modules/users/application/refresh"
+	"github.com/vaaxooo/xbackend/internal/modules/users/application/register"
 )
 
 type Service interface {
