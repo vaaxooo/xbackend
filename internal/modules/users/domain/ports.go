@@ -1,51 +1,17 @@
 package domain
 
-import (
-	"context"
-	"time"
-)
-
-type User struct {
-	ID                string
-	FirstName         string
-	LastName          string
-	MiddleName        string
-	DisplayName       string
-	AvatarURL         string
-	ProfileCustomized bool
-	CreatedAt         time.Time
-}
+import "context"
 
 type UserRepository interface {
 	Create(ctx context.Context, user User) error
-	GetByID(ctx context.Context, userID string) (User, bool, error)
+	GetByID(ctx context.Context, userID UserID) (User, bool, error)
 	UpdateProfile(ctx context.Context, in User) (User, error)
-}
-
-type Identity struct {
-	ID             string
-	UserID         string
-	Provider       string
-	ProviderUserID string
-	SecretHash     string
-	CreatedAt      time.Time
 }
 
 type IdentityRepository interface {
 	Create(ctx context.Context, identity Identity) error
 	GetByProvider(ctx context.Context, provider string, providerUserID string) (Identity, bool, error)
-	GetByUserAndProvider(ctx context.Context, userID string, provider string) (Identity, bool, error)
-}
-
-type RefreshToken struct {
-	ID        string
-	UserID    string
-	TokenHash string
-	ExpiresAt time.Time
-	RevokedAt *time.Time
-	CreatedAt time.Time
-	UserAgent string
-	IP        string
+	GetByUserAndProvider(ctx context.Context, userID UserID, provider string) (Identity, bool, error)
 }
 
 type RefreshTokenRepository interface {

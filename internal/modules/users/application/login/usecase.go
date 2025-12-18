@@ -4,8 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/google/uuid"
-
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/common"
 	"github.com/vaaxooo/xbackend/internal/modules/users/domain"
 )
@@ -15,7 +13,7 @@ type UseCase struct {
 	users      domain.UserRepository
 	identities domain.IdentityRepository
 	refresh    domain.RefreshTokenRepository
-	hasher     common.PasswordHasher
+	hasher     domain.PasswordHasher
 
 	access     common.AccessTokenIssuer
 	accessTTL  time.Duration
@@ -27,7 +25,7 @@ func New(
 	users domain.UserRepository,
 	identities domain.IdentityRepository,
 	refresh domain.RefreshTokenRepository,
-	hasher common.PasswordHasher,
+	hasher domain.PasswordHasher,
 	access common.AccessTokenIssuer,
 	accessTTL time.Duration,
 	refreshTTL time.Duration,
@@ -51,12 +49,12 @@ func New(
 }
 
 func (uc *UseCase) Execute(ctx context.Context, in Input) (Output, error) {
-	email := common.NormalizeEmail(in.Email)
-	if !common.IsValidEmail(email) {
+	email, err := domain.NewEmail(in.Email)
+	if err != nil {
 		return Output{}, domain.ErrInvalidCredentials
 	}
 
-	ident, found, err := uc.identities.GetByProvider(ctx, "email", email)
+	ident, found, err := uc.identities.GetByProvider(ctx, email.Provider(), email.String())
 	if err != nil {
 		return Output{}, err
 	}
@@ -64,7 +62,7 @@ func (uc *UseCase) Execute(ctx context.Context, in Input) (Output, error) {
 		return Output{}, domain.ErrInvalidCredentials
 	}
 
-	if err := uc.hasher.Compare(ctx, ident.SecretHash, in.Password); err != nil {
+	if err := ident.Authenticate(ctx, uc.hasher, in.Password); err != nil {
 		return Output{}, domain.ErrInvalidCredentials
 	}
 
@@ -76,7 +74,7 @@ func (uc *UseCase) Execute(ctx context.Context, in Input) (Output, error) {
 		return Output{}, domain.ErrInvalidCredentials
 	}
 
-	accessToken, err := uc.access.Issue(u.ID, uc.accessTTL)
+	accessToken, err := uc.access.Issue(u.ID.String(), uc.accessTTL)
 	if err != nil {
 		return Output{}, err
 	}
@@ -89,19 +87,13 @@ func (uc *UseCase) Execute(ctx context.Context, in Input) (Output, error) {
 
 	now := time.Now().UTC()
 	if err := uc.tx.WithinTx(ctx, func(ctx context.Context) error {
-		return uc.refresh.Create(ctx, domain.RefreshToken{
-			ID:        uuid.NewString(),
-			UserID:    u.ID,
-			TokenHash: refreshHash,
-			ExpiresAt: now.Add(uc.refreshTTL),
-			CreatedAt: now,
-		})
+		return uc.refresh.Create(ctx, domain.NewRefreshTokenRecord(u.ID, refreshHash, now, uc.refreshTTL))
 	}); err != nil {
 		return Output{}, err
 	}
 
 	return Output{
-		UserID:       u.ID,
+		UserID:       u.ID.String(),
 		FirstName:    u.FirstName,
 		LastName:     u.LastName,
 		MiddleName:   u.MiddleName,

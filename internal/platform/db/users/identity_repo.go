@@ -26,10 +26,10 @@ func (r *IdentityRepo) Create(ctx context.Context, identity domain.Identity) err
 	exec := pdb.Executor(ctx, r.db)
 	_, err := exec.ExecContext(ctx, q,
 		identity.ID,
-		identity.UserID,
+		identity.UserID.String(),
 		identity.Provider,
 		identity.ProviderUserID,
-		nullIfEmpty(identity.SecretHash),
+		nullIfEmpty(identity.SecretHash.String()),
 		identity.CreatedAt,
 	)
 	if err != nil {
@@ -58,8 +58,10 @@ func (r *IdentityRepo) GetByProvider(ctx context.Context, provider string, provi
         LIMIT 1
     `
 	var i domain.Identity
+	var userID string
+	var secretHash string
 	err := pdb.Executor(ctx, r.db).QueryRowContext(ctx, q, provider, providerUserID).Scan(
-		&i.ID, &i.UserID, &i.Provider, &i.ProviderUserID, &i.SecretHash, &i.CreatedAt,
+		&i.ID, &userID, &i.Provider, &i.ProviderUserID, &secretHash, &i.CreatedAt,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return domain.Identity{}, false, nil
@@ -67,10 +69,12 @@ func (r *IdentityRepo) GetByProvider(ctx context.Context, provider string, provi
 	if err != nil {
 		return domain.Identity{}, false, err
 	}
+	i.UserID = domain.UserID(userID)
+	i.SecretHash = domain.PasswordHash(secretHash)
 	return i, true, nil
 }
 
-func (r *IdentityRepo) GetByUserAndProvider(ctx context.Context, userID string, provider string) (domain.Identity, bool, error) {
+func (r *IdentityRepo) GetByUserAndProvider(ctx context.Context, userID domain.UserID, provider string) (domain.Identity, bool, error) {
 	const q = `
         SELECT
             id::text,
@@ -84,8 +88,10 @@ func (r *IdentityRepo) GetByUserAndProvider(ctx context.Context, userID string, 
         LIMIT 1
     `
 	var i domain.Identity
-	err := pdb.Executor(ctx, r.db).QueryRowContext(ctx, q, userID, provider).Scan(
-		&i.ID, &i.UserID, &i.Provider, &i.ProviderUserID, &i.SecretHash, &i.CreatedAt,
+	var id string
+	var secretHash string
+	err := pdb.Executor(ctx, r.db).QueryRowContext(ctx, q, userID.String(), provider).Scan(
+		&i.ID, &id, &i.Provider, &i.ProviderUserID, &secretHash, &i.CreatedAt,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return domain.Identity{}, false, nil
@@ -93,6 +99,8 @@ func (r *IdentityRepo) GetByUserAndProvider(ctx context.Context, userID string, 
 	if err != nil {
 		return domain.Identity{}, false, err
 	}
+	i.UserID = domain.UserID(id)
+	i.SecretHash = domain.PasswordHash(secretHash)
 	return i, true, nil
 }
 

@@ -2,7 +2,6 @@ package profile
 
 import (
 	"context"
-	"strings"
 
 	"github.com/vaaxooo/xbackend/internal/modules/users/domain"
 )
@@ -24,11 +23,12 @@ func NewUpdate(users domain.UserRepository) *UpdateUseCase {
 }
 
 func (uc *GetUseCase) Execute(ctx context.Context, in GetInput) (Output, error) {
-	if in.UserID == "" {
-		return Output{}, domain.ErrUnauthorized
+	id, err := domain.ParseUserID(in.UserID)
+	if err != nil {
+		return Output{}, err
 	}
 
-	u, ok, err := uc.users.GetByID(ctx, in.UserID)
+	u, ok, err := uc.users.GetByID(ctx, id)
 	if err != nil {
 		return Output{}, err
 	}
@@ -37,7 +37,7 @@ func (uc *GetUseCase) Execute(ctx context.Context, in GetInput) (Output, error) 
 	}
 
 	return Output{
-		UserID:      u.ID,
+		UserID:      u.ID.String(),
 		FirstName:   u.FirstName,
 		LastName:    u.LastName,
 		MiddleName:  u.MiddleName,
@@ -47,14 +47,15 @@ func (uc *GetUseCase) Execute(ctx context.Context, in GetInput) (Output, error) 
 }
 
 func (uc *UpdateUseCase) Execute(ctx context.Context, in UpdateInput) (Output, error) {
-	if in.UserID == "" {
-		return Output{}, domain.ErrUnauthorized
+	id, err := domain.ParseUserID(in.UserID)
+	if err != nil {
+		return Output{}, err
 	}
 
 	// PATCH semantics:
 	// - if a field is not provided (nil), we keep the current value
 	// - if provided as an empty string, we treat it as a request to clear the value
-	current, ok, err := uc.users.GetByID(ctx, in.UserID)
+	current, ok, err := uc.users.GetByID(ctx, id)
 	if err != nil {
 		return Output{}, err
 	}
@@ -62,29 +63,19 @@ func (uc *UpdateUseCase) Execute(ctx context.Context, in UpdateInput) (Output, e
 		return Output{}, domain.ErrUnauthorized
 	}
 
-	if in.FirstName != nil {
-		current.FirstName = strings.TrimSpace(*in.FirstName)
-	}
-	if in.LastName != nil {
-		current.LastName = strings.TrimSpace(*in.LastName)
-	}
-	if in.MiddleName != nil {
-		current.MiddleName = strings.TrimSpace(*in.MiddleName)
-	}
-	if in.DisplayName != nil {
-		current.DisplayName = strings.TrimSpace(*in.DisplayName)
-	}
-	if in.AvatarURL != nil {
-		current.AvatarURL = strings.TrimSpace(*in.AvatarURL)
-	}
-
-	u, err := uc.users.UpdateProfile(ctx, current)
+	u, err := uc.users.UpdateProfile(ctx, current.ApplyPatch(domain.ProfilePatch{
+		FirstName:   in.FirstName,
+		LastName:    in.LastName,
+		MiddleName:  in.MiddleName,
+		DisplayName: in.DisplayName,
+		AvatarURL:   in.AvatarURL,
+	}))
 	if err != nil {
 		return Output{}, err
 	}
 
 	return Output{
-		UserID:      u.ID,
+		UserID:      u.ID.String(),
 		FirstName:   u.FirstName,
 		LastName:    u.LastName,
 		MiddleName:  u.MiddleName,

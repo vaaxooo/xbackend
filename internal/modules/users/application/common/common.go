@@ -1,45 +1,15 @@
 package common
 
 import (
-	"context"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
-	"strings"
 	"time"
 )
 
-type PasswordHasher interface {
-	Hash(ctx context.Context, password string) (string, error)
-	Compare(ctx context.Context, hash string, password string) error
-}
-
 type AccessTokenIssuer interface {
 	Issue(userID string, ttl time.Duration) (string, error)
-}
-
-func NormalizeEmail(email string) string {
-	return strings.TrimSpace(strings.ToLower(email))
-}
-
-func IsValidEmail(email string) bool {
-	if len(email) < 6 {
-		return false
-	}
-	at := strings.IndexByte(email, '@')
-	if at <= 0 || at == len(email)-1 {
-		return false
-	}
-	dot := strings.LastIndexByte(email, '.')
-	if dot < at+2 || dot >= len(email)-1 {
-		return false
-	}
-	return true
-}
-
-func IsStrongPassword(pw string) bool {
-	return len(pw) >= 8
 }
 
 func NewRefreshToken() (string, error) {

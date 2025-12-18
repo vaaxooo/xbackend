@@ -4,8 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/google/uuid"
-
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/common"
 	"github.com/vaaxooo/xbackend/internal/modules/users/domain"
 )
@@ -51,14 +49,15 @@ func (uc *UseCase) Execute(ctx context.Context, in Input) (Output, error) {
 	if err != nil {
 		return Output{}, err
 	}
-	if !found || stored.RevokedAt != nil || time.Now().UTC().After(stored.ExpiresAt) {
-		if found && stored.RevokedAt == nil && time.Now().UTC().After(stored.ExpiresAt) {
+	now := time.Now().UTC()
+	if !found || !stored.IsValid(now) {
+		if found && stored.RevokedAt == nil && now.After(stored.ExpiresAt) {
 			_ = uc.refreshRepo.Revoke(ctx, stored.ID)
 		}
 		return Output{}, domain.ErrRefreshTokenInvalid
 	}
 
-	accessToken, err := uc.access.Issue(stored.UserID, uc.accessTTL)
+	accessToken, err := uc.access.Issue(stored.UserID.String(), uc.accessTTL)
 	if err != nil {
 		return Output{}, err
 	}
@@ -68,19 +67,11 @@ func (uc *UseCase) Execute(ctx context.Context, in Input) (Output, error) {
 		return Output{}, err
 	}
 	newHash := common.HashToken(newRefresh)
-
-	now := time.Now().UTC()
 	if err := uc.tx.WithinTx(ctx, func(ctx context.Context) error {
 		if err := uc.refreshRepo.Revoke(ctx, stored.ID); err != nil {
 			return err
 		}
-		return uc.refreshRepo.Create(ctx, domain.RefreshToken{
-			ID:        uuid.NewString(),
-			UserID:    stored.UserID,
-			TokenHash: newHash,
-			ExpiresAt: now.Add(uc.refreshTTL),
-			CreatedAt: now,
-		})
+		return uc.refreshRepo.Create(ctx, domain.NewRefreshTokenRecord(stored.UserID, newHash, now, uc.refreshTTL))
 	}); err != nil {
 		return Output{}, err
 	}

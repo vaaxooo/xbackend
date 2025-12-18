@@ -26,7 +26,7 @@ func (r *RefreshRepo) Create(ctx context.Context, t domain.RefreshToken) error {
 	exec := pdb.Executor(ctx, r.db)
 	_, err := exec.ExecContext(ctx, q,
 		t.ID,
-		t.UserID,
+		t.UserID.String(),
 		t.TokenHash,
 		t.ExpiresAt,
 		t.RevokedAt,
@@ -54,10 +54,11 @@ func (r *RefreshRepo) GetByHash(ctx context.Context, tokenHash string) (domain.R
     `
 	var t domain.RefreshToken
 	var revokedAt sql.NullTime
+	var userID string
 
 	err := pdb.Executor(ctx, r.db).QueryRowContext(ctx, q, tokenHash).Scan(
 		&t.ID,
-		&t.UserID,
+		&userID,
 		&t.TokenHash,
 		&t.ExpiresAt,
 		&revokedAt,
@@ -75,6 +76,7 @@ func (r *RefreshRepo) GetByHash(ctx context.Context, tokenHash string) (domain.R
 		v := revokedAt.Time
 		t.RevokedAt = &v
 	}
+	t.UserID = domain.UserID(userID)
 	return t, true, nil
 }
 
