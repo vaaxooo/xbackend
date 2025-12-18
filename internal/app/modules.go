@@ -59,7 +59,7 @@ func initUsersModule(deps ModuleDeps) (*UsersModule, error) {
 	usersRepo := usersdb.NewUserRepo(deps.DB)
 	identityRepo := usersdb.NewIdentityRepo(deps.DB)
 	refreshRepo := usersdb.NewRefreshRepo(deps.DB)
-	tx := pdb.NewTransactor(deps.DB)
+	uow := pdb.NewUnitOfWork(deps.DB)
 
 	hasher := userscrypto.NewBcryptHasher(0)
 
@@ -68,9 +68,9 @@ func initUsersModule(deps ModuleDeps) (*UsersModule, error) {
 		return nil, err
 	}
 
-	registerUC := register.New(tx, usersRepo, identityRepo, refreshRepo, hasher, tok, deps.AuthAccessTTL, deps.AuthRefreshTTL)
-	loginUC := login.New(tx, usersRepo, identityRepo, refreshRepo, hasher, tok, deps.AuthAccessTTL, deps.AuthRefreshTTL)
-	refreshUC := refresh.New(tx, refreshRepo, tok, deps.AuthAccessTTL, deps.AuthRefreshTTL)
+	registerUC := register.New(uow, usersRepo, identityRepo, refreshRepo, hasher, tok, deps.AuthAccessTTL, deps.AuthRefreshTTL)
+	loginUC := login.New(uow, usersRepo, identityRepo, refreshRepo, hasher, tok, deps.AuthAccessTTL, deps.AuthRefreshTTL)
+	refreshUC := refresh.New(uow, refreshRepo, tok, deps.AuthAccessTTL, deps.AuthRefreshTTL)
 
 	meUC := profile.NewGet(usersRepo)
 	profileUC := profile.NewUpdate(usersRepo)

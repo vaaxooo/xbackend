@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/vaaxooo/xbackend/internal/modules/users/application/common"
 	"github.com/vaaxooo/xbackend/internal/modules/users/domain"
 )
 
@@ -22,7 +23,7 @@ func (uc *UseCase) Execute(ctx context.Context, in Input) (Output, error) {
 	}
 
 	if err := domain.EnsureIdentityAvailable(ctx, uc.identities, userID, in.Provider, in.ProviderUserID); err != nil {
-		return Output{}, err
+		return Output{}, common.NormalizeError(err)
 	}
 
 	identity, err := domain.NewExternalIdentity(userID, in.Provider, in.ProviderUserID, time.Now().UTC())
@@ -31,7 +32,7 @@ func (uc *UseCase) Execute(ctx context.Context, in Input) (Output, error) {
 	}
 
 	if err := uc.identities.Create(ctx, identity); err != nil {
-		return Output{}, err
+		return Output{}, common.NormalizeError(err)
 	}
 
 	return Output{Linked: true}, nil

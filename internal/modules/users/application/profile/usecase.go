@@ -3,6 +3,7 @@ package profile
 import (
 	"context"
 
+	"github.com/vaaxooo/xbackend/internal/modules/users/application/common"
 	"github.com/vaaxooo/xbackend/internal/modules/users/domain"
 )
 
@@ -30,7 +31,7 @@ func (uc *GetUseCase) Execute(ctx context.Context, in GetInput) (Output, error) 
 
 	u, ok, err := uc.users.GetByID(ctx, id)
 	if err != nil {
-		return Output{}, err
+		return Output{}, common.NormalizeError(err)
 	}
 	if !ok {
 		return Output{}, domain.ErrUnauthorized
@@ -57,7 +58,7 @@ func (uc *UpdateUseCase) Execute(ctx context.Context, in UpdateInput) (Output, e
 	// - if provided as an empty string, we treat it as a request to clear the value
 	current, ok, err := uc.users.GetByID(ctx, id)
 	if err != nil {
-		return Output{}, err
+		return Output{}, common.NormalizeError(err)
 	}
 	if !ok {
 		return Output{}, domain.ErrUnauthorized
@@ -71,7 +72,7 @@ func (uc *UpdateUseCase) Execute(ctx context.Context, in UpdateInput) (Output, e
 		AvatarURL:   in.AvatarURL,
 	}))
 	if err != nil {
-		return Output{}, err
+		return Output{}, common.NormalizeError(err)
 	}
 
 	return Output{

@@ -10,7 +10,7 @@ import (
 )
 
 type UseCase struct {
-	tx         common.Transactor
+	uow        common.UnitOfWork
 	users      domain.UserRepository
 	identities domain.IdentityRepository
 	refresh    domain.RefreshTokenRepository
@@ -22,7 +22,7 @@ type UseCase struct {
 }
 
 func New(
-	tx common.Transactor,
+	uow common.UnitOfWork,
 	users domain.UserRepository,
 	identities domain.IdentityRepository,
 	refresh domain.RefreshTokenRepository,
@@ -38,7 +38,7 @@ func New(
 		refreshTTL = 30 * 24 * time.Hour
 	}
 	return &UseCase{
-		tx:         tx,
+		uow:        uow,
 		users:      users,
 		identities: identities,
 		refresh:    refresh,
@@ -55,12 +55,12 @@ func (uc *UseCase) Execute(ctx context.Context, in Input) (login.Output, error) 
 		return login.Output{}, err
 	}
 	if err := email.EnsureUnique(ctx, uc.identities); err != nil {
-		return login.Output{}, err
+		return login.Output{}, common.NormalizeError(err)
 	}
 
 	hash, err := domain.NewPasswordHash(ctx, in.Password, uc.hasher)
 	if err != nil {
-		return login.Output{}, err
+		return login.Output{}, common.NormalizeError(err)
 	}
 
 	userID := domain.NewUserID()
@@ -70,27 +70,27 @@ func (uc *UseCase) Execute(ctx context.Context, in Input) (login.Output, error) 
 
 	accessToken, err := uc.access.Issue(userID.String(), uc.accessTTL)
 	if err != nil {
-		return login.Output{}, err
+		return login.Output{}, common.NormalizeError(err)
 	}
 
 	refreshRaw, err := common.NewRefreshToken()
 	if err != nil {
-		return login.Output{}, err
+		return login.Output{}, common.NormalizeError(err)
 	}
 	refreshHash := common.HashToken(refreshRaw)
 	refreshRecord := domain.NewRefreshTokenRecord(userID, refreshHash, now, uc.refreshTTL)
 
-	if err := uc.tx.WithinTx(ctx, func(ctx context.Context) error {
+	if err := uc.uow.Do(ctx, func(ctx context.Context) error {
 		if err := uc.users.Create(ctx, user); err != nil {
-			return err
+			return common.NormalizeError(err)
 		}
 
 		if err := uc.identities.Create(ctx, identity); err != nil {
-			return err
+			return common.NormalizeError(err)
 		}
 
 		if err := uc.refresh.Create(ctx, refreshRecord); err != nil {
-			return err
+			return common.NormalizeError(err)
 		}
 
 		return nil

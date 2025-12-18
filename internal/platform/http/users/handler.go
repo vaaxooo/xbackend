@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	usersapp "github.com/vaaxooo/xbackend/internal/modules/users/application"
+	"github.com/vaaxooo/xbackend/internal/modules/users/application/common"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/link"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/login"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/profile"
@@ -219,6 +220,9 @@ func mapError(err error) (status int, code string, message string) {
 	}
 	if errors.Is(err, domain.ErrUnauthorized) {
 		return http.StatusUnauthorized, "unauthorized", "Unauthorized"
+	}
+	if errors.Is(err, common.ErrInternal) {
+		return http.StatusInternalServerError, "internal_error", "Internal server error"
 	}
 	return http.StatusInternalServerError, "internal_error", "Internal server error"
 }
