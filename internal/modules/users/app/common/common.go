@@ -1,7 +1,6 @@
 package common
 
 import (
-	"context"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
@@ -9,11 +8,6 @@ import (
 	"strings"
 	"time"
 )
-
-type PasswordHasher interface {
-	Hash(ctx context.Context, password string) (string, error)
-	Compare(ctx context.Context, hash string, password string) error
-}
 
 type AccessTokenIssuer interface {
 	Issue(userID string, ttl time.Duration) (string, error)

@@ -27,7 +27,7 @@ func (r *UserRepo) Create(ctx context.Context, user domain.User) error {
 	_, err := exec.ExecContext(
 		ctx,
 		q,
-		user.ID,
+		user.ID.String(),
 		nullIfEmpty(user.DisplayName),
 		nullIfEmpty(user.AvatarURL),
 		user.ProfileCustomized,
@@ -36,10 +36,10 @@ func (r *UserRepo) Create(ctx context.Context, user domain.User) error {
 	return err
 }
 
-func (r *UserRepo) GetByID(ctx context.Context, userID string) (domain.User, bool, error) {
+func (r *UserRepo) GetByID(ctx context.Context, userID domain.UserID) (domain.User, bool, error) {
 	const q = `
-		SELECT
-			id::text,
+                SELECT
+                        id::text,
 			COALESCE(first_name, ''),
 			COALESCE(last_name, ''),
 			COALESCE(middle_name, ''),
@@ -47,14 +47,15 @@ func (r *UserRepo) GetByID(ctx context.Context, userID string) (domain.User, boo
 			COALESCE(avatar_url, ''),
 			profile_customized,
 			created_at
-		FROM users
-		WHERE id = $1::uuid
-		LIMIT 1
-	`
+                FROM users
+                WHERE id = $1::uuid
+                LIMIT 1
+        `
 
 	var u domain.User
-	err := pdb.Executor(ctx, r.db).QueryRowContext(ctx, q, userID).Scan(
-		&u.ID,
+	var id string
+	err := pdb.Executor(ctx, r.db).QueryRowContext(ctx, q, userID.String()).Scan(
+		&id,
 		&u.FirstName,
 		&u.LastName,
 		&u.MiddleName,
@@ -69,6 +70,7 @@ func (r *UserRepo) GetByID(ctx context.Context, userID string) (domain.User, boo
 	if err != nil {
 		return domain.User{}, false, err
 	}
+	u.ID = domain.UserID(id)
 	return u, true, nil
 }
 
@@ -101,7 +103,7 @@ func (r *UserRepo) UpdateProfile(
 	err := pdb.Executor(ctx, r.db).QueryRowContext(
 		ctx,
 		q,
-		in.ID,
+		in.ID.String(),
 		nullIfEmpty(in.FirstName),
 		nullIfEmpty(in.LastName),
 		nullIfEmpty(in.MiddleName),
