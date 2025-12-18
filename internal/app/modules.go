@@ -4,8 +4,8 @@ import (
 	"database/sql"
 	"time"
 
-	usersapp "github.com/vaaxooo/xbackend/internal/modules/users/app"
-	userswiring "github.com/vaaxooo/xbackend/internal/modules/users/wiring"
+	usersapp "github.com/vaaxooo/xbackend/internal/modules/users/application"
+	userswiring "github.com/vaaxooo/xbackend/internal/modules/users/infrastructure/wiring"
 
 	plog "github.com/vaaxooo/xbackend/internal/platform/log"
 )
