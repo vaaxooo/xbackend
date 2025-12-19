@@ -23,6 +23,7 @@ import (
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/profile"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/refresh"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/register"
+	"github.com/vaaxooo/xbackend/internal/modules/users/application/telegram"
 	"github.com/vaaxooo/xbackend/internal/modules/users/domain"
 	"github.com/vaaxooo/xbackend/internal/modules/users/infrastructure/events"
 	"github.com/vaaxooo/xbackend/internal/modules/users/public"
@@ -50,6 +51,9 @@ type fakeService struct {
 	loginOut login.Output
 	loginErr error
 
+	telegramOut login.Output
+	telegramErr error
+
 	refreshOut refresh.Output
 	refreshErr error
 
@@ -68,6 +72,9 @@ func (f *fakeService) Register(context.Context, register.Input) (login.Output, e
 }
 func (f *fakeService) Login(context.Context, login.Input) (login.Output, error) {
 	return f.loginOut, f.loginErr
+}
+func (f *fakeService) LoginWithTelegram(context.Context, telegram.Input) (login.Output, error) {
+	return f.telegramOut, f.telegramErr
 }
 func (f *fakeService) Refresh(context.Context, refresh.Input) (refresh.Output, error) {
 	return f.refreshOut, f.refreshErr
@@ -100,6 +107,12 @@ type stubHasher struct{}
 
 func (stubHasher) Hash(context.Context, string) (string, error)  { return "hash", nil }
 func (stubHasher) Compare(context.Context, string, string) error { return nil }
+
+type stubTelegramUseCase struct{}
+
+func (stubTelegramUseCase) Execute(context.Context, telegram.Input) (login.Output, error) {
+	return login.Output{}, nil
+}
 
 func newTestServer(svc usersapp.Service, tp *fakeTokenParser) *httptest.Server {
 	router := phttp.NewRouter(phttp.RouterDeps{Logger: stubLogger{}, Timeout: time.Second}, func(r chi.Router) {
@@ -221,6 +234,7 @@ func TestRegisterEndpointTransactionalCommit(t *testing.T) {
 
 	registerUC := common.NewTransactionalUseCase(uow, register.New(usersRepo, identitiesRepo, refreshRepo, stubHasher{}, auth, publisher, time.Minute, time.Hour))
 	loginUC := common.NewTransactionalUseCase(uow, login.New(usersRepo, identitiesRepo, refreshRepo, stubHasher{}, auth, time.Minute, time.Hour))
+	telegramUC := common.NewTransactionalUseCase(uow, stubTelegramUseCase{})
 	refreshUC := common.NewTransactionalUseCase(uow, refresh.New(refreshRepo, auth, time.Minute, time.Hour))
 	meUC := common.NewTransactionalUseCase(uow, profile.NewGet(usersRepo))
 	profileUC := common.NewTransactionalUseCase(uow, profile.NewUpdate(usersRepo))
@@ -229,6 +243,7 @@ func TestRegisterEndpointTransactionalCommit(t *testing.T) {
 	svc := usersapp.NewService(
 		common.UseCaseHandler(registerUC),
 		common.UseCaseHandler(loginUC),
+		common.UseCaseHandler(telegramUC),
 		common.UseCaseHandler(refreshUC),
 		common.UseCaseHandler(meUC),
 		common.UseCaseHandler(profileUC),
@@ -289,6 +304,7 @@ func TestRegisterEndpointRollbackOnFailure(t *testing.T) {
 
 	registerUC := common.NewTransactionalUseCase(uow, register.New(usersRepo, identitiesRepo, refreshRepo, stubHasher{}, auth, events.NewOutboxPublisher(events.NewOutboxRepository(db)), time.Minute, time.Hour))
 	loginUC := common.NewTransactionalUseCase(uow, login.New(usersRepo, identitiesRepo, refreshRepo, stubHasher{}, auth, time.Minute, time.Hour))
+	telegramUC := common.NewTransactionalUseCase(uow, stubTelegramUseCase{})
 	refreshUC := common.NewTransactionalUseCase(uow, refresh.New(refreshRepo, auth, time.Minute, time.Hour))
 	meUC := common.NewTransactionalUseCase(uow, profile.NewGet(usersRepo))
 	profileUC := common.NewTransactionalUseCase(uow, profile.NewUpdate(usersRepo))
@@ -297,6 +313,7 @@ func TestRegisterEndpointRollbackOnFailure(t *testing.T) {
 	svc := usersapp.NewService(
 		common.UseCaseHandler(registerUC),
 		common.UseCaseHandler(loginUC),
+		common.UseCaseHandler(telegramUC),
 		common.UseCaseHandler(refreshUC),
 		common.UseCaseHandler(meUC),
 		common.UseCaseHandler(profileUC),

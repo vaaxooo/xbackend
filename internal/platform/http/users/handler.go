@@ -24,6 +24,7 @@ type Handler struct {
 
 	register phttp.UseCaseHandler[usersapi.RegisterInput, login.Output]
 	login    phttp.UseCaseHandler[usersapi.LoginInput, login.Output]
+	telegram phttp.UseCaseHandler[usersapi.TelegramLoginInput, login.Output]
 	refresh  phttp.UseCaseHandler[usersapi.RefreshInput, refresh.Output]
 
 	getMe  phttp.UseCaseHandler[usersapi.GetProfileInput, profile.Output]
@@ -39,6 +40,9 @@ func NewHandler(svc usersapi.Service, middleware phttp.UseCaseMiddleware) *Handl
 		}),
 		login: phttp.UseCaseFunc[usersapi.LoginInput, login.Output](func(ctx context.Context, cmd usersapi.LoginInput) (login.Output, error) {
 			return svc.Login(ctx, cmd)
+		}),
+		telegram: phttp.UseCaseFunc[usersapi.TelegramLoginInput, login.Output](func(ctx context.Context, cmd usersapi.TelegramLoginInput) (login.Output, error) {
+			return svc.LoginWithTelegram(ctx, cmd)
 		}),
 		refresh: phttp.UseCaseFunc[usersapi.RefreshInput, refresh.Output](func(ctx context.Context, cmd usersapi.RefreshInput) (refresh.Output, error) {
 			return svc.Refresh(ctx, cmd)
@@ -99,6 +103,38 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	out, err := phttp.HandleUseCase(h.middleware, r, h.login, usersapi.LoginInput{
 		Email:    req.Email,
 		Password: req.Password,
+	})
+	if err != nil {
+		status, code, msg := mapError(err)
+		phttp.WriteError(w, status, code, msg)
+		return
+	}
+
+	phttp.WriteJSON(w, http.StatusOK, dto.LoginResponse{
+		UserProfileResponse: dto.UserProfileResponse{
+			UserID:      out.UserID,
+			FirstName:   out.FirstName,
+			LastName:    out.LastName,
+			MiddleName:  out.MiddleName,
+			DisplayName: out.DisplayName,
+			AvatarURL:   out.AvatarURL,
+		},
+		TokensResponse: dto.TokensResponse{
+			AccessToken:  out.AccessToken,
+			RefreshToken: out.RefreshToken,
+		},
+	})
+}
+
+func (h *Handler) TelegramLogin(w http.ResponseWriter, r *http.Request) {
+	var req dto.TelegramLoginRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		phttp.WriteError(w, http.StatusBadRequest, "invalid_json", "Invalid JSON")
+		return
+	}
+
+	out, err := phttp.HandleUseCase(h.middleware, r, h.telegram, usersapi.TelegramLoginInput{
+		InitData: req.InitData,
 	})
 	if err != nil {
 		status, code, msg := mapError(err)
