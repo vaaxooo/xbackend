@@ -17,6 +17,7 @@ func RegisterV1(r chi.Router, svc public.Service, auth public.AuthPort) {
 		// Auth endpoints are brute-force targets.
 		r.With(pmiddleware.RateLimit(20, time.Minute)).Post("/register", h.Register)
 		r.With(pmiddleware.RateLimit(10, time.Minute)).Post("/login", h.Login)
+		r.With(pmiddleware.RateLimit(10, time.Minute)).Post("/telegram", h.TelegramLogin)
 		r.With(pmiddleware.RateLimit(20, time.Minute)).Post("/refresh", h.Refresh)
 
 		r.Group(func(r chi.Router) {

@@ -18,6 +18,7 @@ func TestDTOJsonSchemasMatchStructs(t *testing.T) {
 	}{
 		{"register request", dto.RegisterRequest{}, schemaPath("register_request.schema.json")},
 		{"login request", dto.LoginRequest{}, schemaPath("login_request.schema.json")},
+		{"telegram login request", dto.TelegramLoginRequest{}, schemaPath("telegram_login_request.schema.json")},
 		{"refresh request", dto.RefreshRequest{}, schemaPath("refresh_request.schema.json")},
 		{"update profile request", dto.UpdateProfileRequest{}, schemaPath("update_profile_request.schema.json")},
 		{"link provider request", dto.LinkProviderRequest{}, schemaPath("link_provider_request.schema.json")},

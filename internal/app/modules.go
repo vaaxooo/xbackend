@@ -10,6 +10,7 @@ import (
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/profile"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/refresh"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/register"
+	"github.com/vaaxooo/xbackend/internal/modules/users/application/telegram"
 	usersauth "github.com/vaaxooo/xbackend/internal/modules/users/infrastructure/auth"
 	userscrypto "github.com/vaaxooo/xbackend/internal/modules/users/infrastructure/crypto"
 	usersevents "github.com/vaaxooo/xbackend/internal/modules/users/infrastructure/events"
@@ -73,6 +74,11 @@ func initUsersModule(deps ModuleDeps, cfg public.Config) (*UsersModule, error) {
 
 	registerUC := common.NewTransactionalUseCase(uow, register.New(usersRepo, identityRepo, refreshRepo, hasher, authPort, eventPublisher, cfg.Auth.AccessTTL, cfg.Auth.RefreshTTL))
 	loginUC := common.NewTransactionalUseCase(uow, login.New(usersRepo, identityRepo, refreshRepo, hasher, authPort, cfg.Auth.AccessTTL, cfg.Auth.RefreshTTL))
+	telegramUC, err := telegram.New(usersRepo, identityRepo, refreshRepo, authPort, cfg.Telegram.BotToken, cfg.Auth.AccessTTL, cfg.Auth.RefreshTTL, cfg.Telegram.InitDataTTL)
+	if err != nil {
+		return nil, err
+	}
+	telegramTransactional := common.NewTransactionalUseCase(uow, telegramUC)
 	refreshUC := common.NewTransactionalUseCase(uow, refresh.New(refreshRepo, authPort, cfg.Auth.AccessTTL, cfg.Auth.RefreshTTL))
 
 	meUC := common.NewTransactionalUseCase(uow, profile.NewGet(usersRepo))
@@ -82,6 +88,7 @@ func initUsersModule(deps ModuleDeps, cfg public.Config) (*UsersModule, error) {
 	svc := usersapp.NewService(
 		common.UseCaseHandler(registerUC),
 		common.UseCaseHandler(loginUC),
+		common.UseCaseHandler(telegramTransactional),
 		common.UseCaseHandler(refreshUC),
 		common.UseCaseHandler(meUC),
 		common.UseCaseHandler(profileUC),

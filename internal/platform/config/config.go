@@ -3,10 +3,11 @@ package config
 import "time"
 
 type Config struct {
-	App  AppConfig
-	HTTP HTTPConfig
-	DB   DBConfig
-	Auth AuthConfig
+	App      AppConfig
+	HTTP     HTTPConfig
+	DB       DBConfig
+	Auth     AuthConfig
+	Telegram TelegramConfig
 }
 
 type AppConfig struct {
@@ -36,4 +37,9 @@ type AuthConfig struct {
 	JWTSecret  string
 	AccessTTL  time.Duration
 	RefreshTTL time.Duration
+}
+
+type TelegramConfig struct {
+	BotToken    string
+	InitDataTTL time.Duration
 }

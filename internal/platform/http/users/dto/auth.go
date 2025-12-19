@@ -11,6 +11,10 @@ type LoginRequest struct {
 	Password string `json:"password"`
 }
 
+type TelegramLoginRequest struct {
+	InitData string `json:"init_data"`
+}
+
 type RefreshRequest struct {
 	RefreshToken string `json:"refresh_token"`
 }
