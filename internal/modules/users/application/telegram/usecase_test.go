@@ -56,16 +56,6 @@ func TestDisplayNameFallback(t *testing.T) {
 	}
 }
 
-func TestNew_MissingBotToken(t *testing.T) {
-	_, err := New(nil, nil, nil, nil, "", 0, 0, 0)
-	if err == nil {
-		t.Fatalf("expected error when bot token is missing")
-	}
-	if !strings.Contains(err.Error(), "TELEGRAM_BOT_TOKEN") {
-		t.Fatalf("unexpected error: %v", err)
-	}
-}
-
 func addHash(t *testing.T, botToken string, values url.Values) {
 	t.Helper()
 

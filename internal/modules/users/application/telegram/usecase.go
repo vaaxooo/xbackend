@@ -6,7 +6,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"net/url"
 	"sort"
 	"strconv"
@@ -60,7 +59,7 @@ func New(
 	initDataTTL time.Duration,
 ) (*UseCase, error) {
 	if botToken = strings.TrimSpace(botToken); botToken == "" {
-		return nil, fmt.Errorf("telegram bot token is required (set TELEGRAM_BOT_TOKEN)")
+		return nil, domain.ErrUnauthorized
 	}
 
 	if accessTTL == 0 {
