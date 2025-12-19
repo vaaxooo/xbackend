@@ -33,6 +33,10 @@ func Load() (*Config, error) {
 			AccessTTL:  getDuration("AUTH_ACCESS_TTL", 15*time.Minute),
 			RefreshTTL: getDuration("AUTH_REFRESH_TTL", 30*24*time.Hour),
 		},
+		Telegram: TelegramConfig{
+			BotToken:    getEnv("TELEGRAM_BOT_TOKEN", ""),
+			InitDataTTL: getDuration("TELEGRAM_INIT_DATA_TTL", 24*time.Hour),
+		},
 	}
 
 	if cfg.DB.DSN == "" {

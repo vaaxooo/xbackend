@@ -9,18 +9,25 @@ import (
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/profile"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/refresh"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/register"
+	"github.com/vaaxooo/xbackend/internal/modules/users/application/telegram"
 )
 
 type Service = application.Service
 
 type Config struct {
-	Auth AuthConfig
+	Auth     AuthConfig
+	Telegram TelegramConfig
 }
 
 type AuthConfig struct {
 	JWTSecret  string
 	AccessTTL  time.Duration
 	RefreshTTL time.Duration
+}
+
+type TelegramConfig struct {
+	BotToken    string
+	InitDataTTL time.Duration
 }
 
 type AuthPort interface {
@@ -39,6 +46,7 @@ type LoginInput = login.Input
 type LoginOutput = login.Output
 type RefreshInput = refresh.Input
 type RefreshOutput = refresh.Output
+type TelegramLoginInput = telegram.Input
 type GetProfileInput = profile.GetInput
 type UpdateProfileInput = profile.UpdateInput
 type ProfileOutput = profile.Output

@@ -77,6 +77,41 @@ paths:
             application/json:
               schema:
                 $ref: "./schemas/error_response.schema.json"
+  /auth/telegram:
+    post:
+      summary: Login or register with Telegram Web App data
+      operationId: loginWithTelegram
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "./schemas/telegram_login_request.schema.json"
+      responses:
+        '200':
+          description: Authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas/login_response.schema.json"
+        '400':
+          description: Invalid payload
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas/error_response.schema.json"
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas/error_response.schema.json"
+        '500':
+          description: Internal error
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas/error_response.schema.json"
   /auth/refresh:
     post:
       summary: Refresh access token

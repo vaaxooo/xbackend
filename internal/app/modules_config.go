@@ -14,5 +14,9 @@ func UsersConfig(cfg *pconfig.Config) userspublic.Config {
 			AccessTTL:  cfg.Auth.AccessTTL,
 			RefreshTTL: cfg.Auth.RefreshTTL,
 		},
+		Telegram: userspublic.TelegramConfig{
+			BotToken:    cfg.Telegram.BotToken,
+			InitDataTTL: cfg.Telegram.InitDataTTL,
+		},
 	}
 }
