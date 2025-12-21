@@ -1,6 +1,9 @@
 package domain
 
-import "context"
+import (
+	"context"
+	"time"
+)
 
 type UserRepository interface {
 	Create(ctx context.Context, user User) error
@@ -12,10 +15,18 @@ type IdentityRepository interface {
 	Create(ctx context.Context, identity Identity) error
 	GetByProvider(ctx context.Context, provider string, providerUserID string) (Identity, bool, error)
 	GetByUserAndProvider(ctx context.Context, userID UserID, provider string) (Identity, bool, error)
+	Update(ctx context.Context, identity Identity) error
 }
 
 type RefreshTokenRepository interface {
 	Create(ctx context.Context, t RefreshToken) error
 	GetByHash(ctx context.Context, tokenHash string) (RefreshToken, bool, error)
 	Revoke(ctx context.Context, tokenID string) error
+}
+
+type VerificationTokenRepository interface {
+	Create(ctx context.Context, token VerificationToken) error
+	GetLatest(ctx context.Context, identityID string, tokenType TokenType) (VerificationToken, bool, error)
+	GetByCode(ctx context.Context, identityID string, tokenType TokenType, code string) (VerificationToken, bool, error)
+	MarkUsed(ctx context.Context, tokenID string, usedAt time.Time) error
 }

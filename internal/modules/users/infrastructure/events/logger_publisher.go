@@ -34,5 +34,25 @@ func (p *LoggerPublisher) PublishUserRegistered(ctx context.Context, event usere
 	return nil
 }
 
+func (p *LoggerPublisher) PublishEmailConfirmationRequested(ctx context.Context, event userevents.EmailConfirmationRequested) error {
+	payload, err := json.Marshal(event)
+	if err != nil {
+		return err
+	}
+
+	p.logger.Info(ctx, "user.email_confirmation_requested", "event", string(payload), "published_at", p.clock().UTC())
+	return nil
+}
+
+func (p *LoggerPublisher) PublishPasswordResetRequested(ctx context.Context, event userevents.PasswordResetRequested) error {
+	payload, err := json.Marshal(event)
+	if err != nil {
+		return err
+	}
+
+	p.logger.Info(ctx, "user.password_reset_requested", "event", string(payload), "published_at", p.clock().UTC())
+	return nil
+}
+
 // Ensure LoggerPublisher implements the application contract.
 var _ common.EventPublisher = (*LoggerPublisher)(nil)
