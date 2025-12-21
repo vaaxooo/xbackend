@@ -79,7 +79,7 @@ func (w *Worker) ProcessOnce(ctx context.Context) error {
 			if markErr := w.repo.MarkFailed(ctx, msg.ID, err); markErr != nil {
 				w.logger.Error(ctx, "failed to mark outbox message as failed", markErr, "event_id", msg.ID.String())
 			}
-			w.logger.Warn(ctx, "outbox publish failed", "event_id", msg.ID.String(), "event_type", msg.EventType)
+			w.logger.Warn(ctx, "outbox publish failed", "event_id", msg.ID.String(), "event_type", msg.EventType, "error", err)
 			continue
 		}
 
