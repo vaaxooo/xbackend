@@ -7,6 +7,7 @@ import (
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/challenge"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/link"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/login"
+	"github.com/vaaxooo/xbackend/internal/modules/users/application/password"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/profile"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/refresh"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/register"
@@ -67,6 +68,7 @@ type TwoFactorDisableInput = twofactor.DisableInput
 type TelegramLoginInput = telegram.Input
 type GetProfileInput = profile.GetInput
 type UpdateProfileInput = profile.UpdateInput
+type ChangePasswordInput = password.ChangeInput
 type ProfileOutput = profile.Output
 type LinkProviderInput = link.Input
 type LinkProviderOutput = link.Output

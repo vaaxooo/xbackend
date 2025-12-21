@@ -42,6 +42,11 @@ type PasswordResetConfirmRequest struct {
 	Password string `json:"password"`
 }
 
+type ChangePasswordRequest struct {
+	CurrentPassword string `json:"current_password"`
+	NewPassword     string `json:"new_password"`
+}
+
 type TwoFactorSetupResponse struct {
 	Secret string `json:"secret"`
 	URI    string `json:"uri"`
