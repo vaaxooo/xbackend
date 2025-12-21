@@ -19,10 +19,17 @@ func RegisterV1(r chi.Router, svc public.Service, auth public.AuthPort) {
 		r.With(pmiddleware.RateLimit(10, time.Minute)).Post("/login", h.Login)
 		r.With(pmiddleware.RateLimit(10, time.Minute)).Post("/telegram", h.TelegramLogin)
 		r.With(pmiddleware.RateLimit(20, time.Minute)).Post("/refresh", h.Refresh)
+		r.With(pmiddleware.RateLimit(20, time.Minute)).Post("/confirm", h.ConfirmEmail)
+		r.With(pmiddleware.RateLimit(10, time.Minute)).Post("/confirm/request", h.RequestEmailConfirmation)
+		r.With(pmiddleware.RateLimit(10, time.Minute)).Post("/password/reset", h.RequestPasswordReset)
+		r.With(pmiddleware.RateLimit(10, time.Minute)).Post("/password/confirm", h.ResetPassword)
 
 		r.Group(func(r chi.Router) {
 			r.Use(middleware.RequireJWT(auth))
 			r.Post("/link", h.LinkProvider)
+			r.Post("/2fa/setup", h.SetupTwoFactor)
+			r.Post("/2fa/confirm", h.ConfirmTwoFactor)
+			r.Post("/2fa/disable", h.DisableTwoFactor)
 		})
 	})
 
