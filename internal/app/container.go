@@ -12,6 +12,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/vaaxooo/xbackend/internal/modules/users/application/common"
 	usersevents "github.com/vaaxooo/xbackend/internal/modules/users/infrastructure/events"
 	pconfig "github.com/vaaxooo/xbackend/internal/platform/config"
 	phttp "github.com/vaaxooo/xbackend/internal/platform/http"
@@ -69,7 +70,24 @@ func NewContainer(deps Deps) (*Container, error) {
 		handler,
 	)
 
-	worker := outbox.NewWorker(mods.Users.Outbox, usersevents.NewLoggerDomainPublisher(deps.Logger), deps.Logger, outbox.Config{})
+	var domainPublisher common.DomainEventPublisher = usersevents.NewLoggerDomainPublisher(deps.Logger)
+	if deps.Config.SMTP.Host != "" && deps.Config.SMTP.From != "" {
+		mailer := usersevents.NewSMTPMailer(
+			deps.Config.SMTP.Host,
+			deps.Config.SMTP.Port,
+			deps.Config.SMTP.Username,
+			deps.Config.SMTP.Password,
+			deps.Config.SMTP.From,
+			deps.Config.SMTP.UseTLS,
+			deps.Config.SMTP.Timeout,
+		)
+		domainPublisher = usersevents.NewMultiDomainPublisher(
+			usersevents.NewOutboxEmailPublisher(mailer, deps.Logger),
+			domainPublisher,
+		)
+	}
+
+	worker := outbox.NewWorker(mods.Users.Outbox, domainPublisher, deps.Logger, outbox.Config{})
 
 	return &Container{
 		cfg:     deps.Config,

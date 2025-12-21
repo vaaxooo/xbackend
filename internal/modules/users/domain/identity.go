@@ -9,22 +9,26 @@ import (
 )
 
 type Identity struct {
-	ID             string
-	UserID         UserID
-	Provider       string
-	ProviderUserID string
-	SecretHash     PasswordHash
-	CreatedAt      time.Time
+	ID              string
+	UserID          UserID
+	Provider        string
+	ProviderUserID  string
+	SecretHash      PasswordHash
+	EmailVerifiedAt *time.Time
+	TOTPSecret      string
+	TOTPConfirmedAt *time.Time
+	CreatedAt       time.Time
 }
 
 func NewEmailIdentity(userID UserID, email Email, password PasswordHash, createdAt time.Time) Identity {
 	return Identity{
-		ID:             uuid.NewString(),
-		UserID:         userID,
-		Provider:       email.Provider(),
-		ProviderUserID: email.String(),
-		SecretHash:     password,
-		CreatedAt:      createdAt,
+		ID:              uuid.NewString(),
+		UserID:          userID,
+		Provider:        email.Provider(),
+		ProviderUserID:  email.String(),
+		SecretHash:      password,
+		EmailVerifiedAt: nil,
+		CreatedAt:       createdAt,
 	}
 }
 
@@ -67,4 +71,33 @@ func (i Identity) Authenticate(ctx context.Context, hasher PasswordHasher, passw
 		return ErrInvalidCredentials
 	}
 	return nil
+}
+
+func (i Identity) WithEmailVerified(at time.Time) Identity {
+	i.EmailVerifiedAt = &at
+	return i
+}
+
+func (i Identity) IsEmailVerified() bool {
+	return i.EmailVerifiedAt != nil
+}
+
+func (i Identity) WithTOTPSecret(secret string) Identity {
+	i.TOTPSecret = strings.TrimSpace(secret)
+	return i
+}
+
+func (i Identity) WithTOTPConfirmed(at time.Time) Identity {
+	i.TOTPConfirmedAt = &at
+	return i
+}
+
+func (i Identity) ClearTOTP() Identity {
+	i.TOTPSecret = ""
+	i.TOTPConfirmedAt = nil
+	return i
+}
+
+func (i Identity) IsTwoFactorEnabled() bool {
+	return strings.TrimSpace(i.TOTPSecret) != "" && i.TOTPConfirmedAt != nil
 }
