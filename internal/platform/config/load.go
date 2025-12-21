@@ -29,13 +29,26 @@ func Load() (*Config, error) {
 			ConnMaxLife:     getDuration("DB_CONN_MAX_LIFETIME", 5*time.Minute),
 		},
 		Auth: AuthConfig{
-			JWTSecret:  getEnv("AUTH_JWT_SECRET", ""),
-			AccessTTL:  getDuration("AUTH_ACCESS_TTL", 15*time.Minute),
-			RefreshTTL: getDuration("AUTH_REFRESH_TTL", 30*24*time.Hour),
+			JWTSecret:                getEnv("AUTH_JWT_SECRET", ""),
+			AccessTTL:                getDuration("AUTH_ACCESS_TTL", 15*time.Minute),
+			RefreshTTL:               getDuration("AUTH_REFRESH_TTL", 30*24*time.Hour),
+			RequireEmailConfirmation: getBool("AUTH_REQUIRE_EMAIL_CONFIRMATION", false),
+			VerificationTTL:          getDuration("AUTH_VERIFICATION_TTL", 15*time.Minute),
+			PasswordResetTTL:         getDuration("AUTH_PASSWORD_RESET_TTL", 15*time.Minute),
+			TwoFactorIssuer:          getEnv("AUTH_TWO_FACTOR_ISSUER", "xbackend"),
 		},
 		Telegram: TelegramConfig{
 			BotToken:    getEnv("TELEGRAM_BOT_TOKEN", ""),
 			InitDataTTL: getDuration("TELEGRAM_INIT_DATA_TTL", 24*time.Hour),
+		},
+		SMTP: SMTPConfig{
+			Host:     getEnv("SMTP_HOST", ""),
+			Port:     getInt("SMTP_PORT", 587),
+			Username: getEnv("SMTP_USERNAME", ""),
+			Password: getEnv("SMTP_PASSWORD", ""),
+			From:     getEnv("SMTP_FROM", ""),
+			UseTLS:   getBool("SMTP_USE_TLS", true),
+			Timeout:  getDuration("SMTP_TIMEOUT", 10*time.Second),
 		},
 	}
 
@@ -75,4 +88,16 @@ func getDuration(key string, def time.Duration) time.Duration {
 		return def
 	}
 	return d
+}
+
+func getBool(key string, def bool) bool {
+	v := os.Getenv(key)
+	if v == "" {
+		return def
+	}
+	parsed, err := strconv.ParseBool(v)
+	if err != nil {
+		return def
+	}
+	return parsed
 }
