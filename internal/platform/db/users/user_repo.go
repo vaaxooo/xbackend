@@ -20,9 +20,9 @@ func NewUserRepo(db *sql.DB) *UserRepo {
 
 func (r *UserRepo) Create(ctx context.Context, user domain.User) error {
 	const q = `
-        INSERT INTO users (id, display_name, avatar_url, profile_customized, created_at)
-        VALUES ($1::uuid, $2, $3, $4, $5)
-    `
+INSERT INTO users (id, display_name, avatar_url, profile_customized, suspended, suspension_reason, blocked_until, created_at)
+VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, $8)
+`
 	exec := pdb.Executor(ctx, r.db)
 	_, err := exec.ExecContext(
 		ctx,
@@ -31,6 +31,9 @@ func (r *UserRepo) Create(ctx context.Context, user domain.User) error {
 		nullIfEmpty(user.DisplayName),
 		nullIfEmpty(user.AvatarURL),
 		user.ProfileCustomized,
+		user.Suspended,
+		nullIfEmpty(user.SuspensionReason),
+		user.BlockedUntil,
 		user.CreatedAt,
 	)
 	return err
@@ -43,14 +46,17 @@ func (r *UserRepo) GetByID(ctx context.Context, userID domain.UserID) (domain.Us
 			COALESCE(first_name, ''),
 			COALESCE(last_name, ''),
 			COALESCE(middle_name, ''),
-			COALESCE(display_name, ''),
-			COALESCE(avatar_url, ''),
-			profile_customized,
-			created_at
-                FROM users
-                WHERE id = $1::uuid
-                LIMIT 1
-        `
+COALESCE(display_name, ''),
+COALESCE(avatar_url, ''),
+profile_customized,
+suspended,
+COALESCE(suspension_reason, ''),
+blocked_until,
+created_at
+FROM users
+WHERE id = $1::uuid
+LIMIT 1
+`
 
 	var u domain.User
 	var id string
@@ -62,6 +68,9 @@ func (r *UserRepo) GetByID(ctx context.Context, userID domain.UserID) (domain.Us
 		&u.DisplayName,
 		&u.AvatarURL,
 		&u.ProfileCustomized,
+		&u.Suspended,
+		&u.SuspensionReason,
+		&u.BlockedUntil,
 		&u.CreatedAt,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -88,16 +97,19 @@ func (r *UserRepo) UpdateProfile(
             avatar_url = $6,
             profile_customized = TRUE
         WHERE id = $1::uuid
-        RETURNING
-            id::text,
-            COALESCE(first_name, ''),
-            COALESCE(last_name, ''),
-            COALESCE(middle_name, ''),
-            COALESCE(display_name, ''),
-            COALESCE(avatar_url, ''),
-            profile_customized,
-            created_at
-    `
+RETURNING
+id::text,
+COALESCE(first_name, ''),
+COALESCE(last_name, ''),
+COALESCE(middle_name, ''),
+COALESCE(display_name, ''),
+COALESCE(avatar_url, ''),
+profile_customized,
+suspended,
+COALESCE(suspension_reason, ''),
+blocked_until,
+created_at
+`
 
 	var u domain.User
 	err := pdb.Executor(ctx, r.db).QueryRowContext(
@@ -117,6 +129,9 @@ func (r *UserRepo) UpdateProfile(
 		&u.DisplayName,
 		&u.AvatarURL,
 		&u.ProfileCustomized,
+		&u.Suspended,
+		&u.SuspensionReason,
+		&u.BlockedUntil,
 		&u.CreatedAt,
 	)
 	if err != nil {

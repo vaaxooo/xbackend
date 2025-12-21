@@ -1,11 +1,12 @@
 package application
 
 import (
-	"context"
+"context"
 
-	"github.com/vaaxooo/xbackend/internal/modules/users/application/link"
-        "github.com/vaaxooo/xbackend/internal/modules/users/application/login"
-        "github.com/vaaxooo/xbackend/internal/modules/users/application/profile"
+"github.com/vaaxooo/xbackend/internal/modules/users/application/link"
+"github.com/vaaxooo/xbackend/internal/modules/users/application/challenge"
+"github.com/vaaxooo/xbackend/internal/modules/users/application/login"
+"github.com/vaaxooo/xbackend/internal/modules/users/application/profile"
         "github.com/vaaxooo/xbackend/internal/modules/users/application/refresh"
         "github.com/vaaxooo/xbackend/internal/modules/users/application/register"
         "github.com/vaaxooo/xbackend/internal/modules/users/application/telegram"
@@ -28,5 +29,9 @@ type Service interface {
 
         GetMe(ctx context.Context, in profile.GetInput) (profile.Output, error)
         UpdateProfile(ctx context.Context, in profile.UpdateInput) (profile.Output, error)
-        LinkProvider(ctx context.Context, in link.Input) (link.Output, error)
+LinkProvider(ctx context.Context, in link.Input) (link.Output, error)
+ChallengeStatus(ctx context.Context, in challenge.StatusInput) (login.Output, error)
+VerifyChallengeTOTP(ctx context.Context, in challenge.VerifyTOTPInput) (login.Output, error)
+ResendChallengeEmail(ctx context.Context, in challenge.ResendEmailInput) (login.Output, error)
+ConfirmChallengeEmail(ctx context.Context, in challenge.ConfirmEmailInput) (login.Output, error)
 }

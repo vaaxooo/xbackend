@@ -23,6 +23,10 @@ func RegisterV1(r chi.Router, svc public.Service, auth public.AuthPort) {
 		r.With(pmiddleware.RateLimit(10, time.Minute)).Post("/confirm/request", h.RequestEmailConfirmation)
 		r.With(pmiddleware.RateLimit(10, time.Minute)).Post("/password/reset", h.RequestPasswordReset)
 		r.With(pmiddleware.RateLimit(10, time.Minute)).Post("/password/confirm", h.ResetPassword)
+		r.With(pmiddleware.RateLimit(20, time.Minute)).Post("/challenge/status", h.ChallengeStatus)
+		r.With(pmiddleware.RateLimit(20, time.Minute)).Post("/challenge/verify-totp", h.VerifyChallengeTOTP)
+		r.With(pmiddleware.RateLimit(20, time.Minute)).Post("/challenge/resend-email", h.ResendChallengeEmail)
+		r.With(pmiddleware.RateLimit(20, time.Minute)).Post("/challenge/confirm-email", h.ConfirmChallengeEmail)
 
 		r.Group(func(r chi.Router) {
 			r.Use(middleware.RequireJWT(auth))

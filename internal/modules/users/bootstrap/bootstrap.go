@@ -6,6 +6,7 @@ import (
 	"time"
 
 	usersapp "github.com/vaaxooo/xbackend/internal/modules/users/application"
+	"github.com/vaaxooo/xbackend/internal/modules/users/application/challenge"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/common"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/link"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/login"
@@ -15,6 +16,7 @@ import (
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/telegram"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/twofactor"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/verification"
+	"github.com/vaaxooo/xbackend/internal/modules/users/domain"
 	usersauth "github.com/vaaxooo/xbackend/internal/modules/users/infrastructure/auth"
 	userscrypto "github.com/vaaxooo/xbackend/internal/modules/users/infrastructure/crypto"
 	usersevents "github.com/vaaxooo/xbackend/internal/modules/users/infrastructure/events"
@@ -46,6 +48,7 @@ func Init(deps Dependencies, cfg public.Config) (*Module, error) {
 	identityRepo := usersdb.NewIdentityRepo(deps.DB)
 	refreshRepo := usersdb.NewRefreshRepo(deps.DB)
 	tokenRepo := usersdb.NewVerificationTokenRepo(deps.DB)
+	challengeRepo := usersdb.NewChallengeRepo(deps.DB)
 	outboxRepo := usersevents.NewOutboxRepository(deps.DB)
 	uow := pdb.NewUnitOfWork(deps.DB)
 
@@ -58,8 +61,26 @@ func Init(deps Dependencies, cfg public.Config) (*Module, error) {
 
 	eventPublisher := usersevents.NewOutboxPublisher(outboxRepo)
 
+	requestVerification := verification.NewRequestUseCase(identityRepo, tokenRepo, eventPublisher, cfg.Auth.VerificationTTL, cfg.Auth.PasswordResetTTL, time.Minute)
+
 	registerUC := common.NewTransactionalUseCase(uow, register.New(usersRepo, identityRepo, refreshRepo, tokenRepo, hasher, authPort, eventPublisher, cfg.Auth.AccessTTL, cfg.Auth.RefreshTTL, cfg.Auth.VerificationTTL, cfg.Auth.RequireEmailConfirmation))
-	loginUC := common.NewTransactionalUseCase(uow, login.New(usersRepo, identityRepo, refreshRepo, hasher, authPort, cfg.Auth.AccessTTL, cfg.Auth.RefreshTTL, cfg.Auth.RequireEmailConfirmation))
+	loginUC := common.NewTransactionalUseCase(uow, login.New(
+		usersRepo,
+		identityRepo,
+		refreshRepo,
+		challengeRepo,
+		hasher,
+		authPort,
+		cfg.Auth.AccessTTL,
+		cfg.Auth.RefreshTTL,
+		cfg.Auth.RequireEmailConfirmation,
+		cfg.Auth.ChallengeTTL,
+		cfg.Auth.TOTPAttempts,
+		cfg.Auth.TOTPLockDuration,
+		func(ctx context.Context, ident domain.Identity) error {
+			return requestVerification.RequestEmailConfirmation(ctx, verification.RequestEmailInput{Email: ident.ProviderUserID})
+		},
+	))
 	telegramUC, err := telegram.New(usersRepo, identityRepo, refreshRepo, authPort, cfg.Telegram.BotToken, cfg.Auth.AccessTTL, cfg.Auth.RefreshTTL, cfg.Telegram.InitDataTTL)
 	if err != nil {
 		return nil, err
@@ -69,7 +90,6 @@ func Init(deps Dependencies, cfg public.Config) (*Module, error) {
 
 	confirmEmailUC := common.NewTransactionalUseCase(uow, verification.NewConfirmEmailUseCase(usersRepo, identityRepo, tokenRepo, refreshRepo, authPort, cfg.Auth.AccessTTL, cfg.Auth.RefreshTTL))
 
-	requestVerification := verification.NewRequestUseCase(identityRepo, tokenRepo, eventPublisher, cfg.Auth.VerificationTTL, cfg.Auth.PasswordResetTTL, time.Minute)
 	emailVerificationUC := common.NewTransactionalUseCase(uow, funcUseCase[verification.RequestEmailInput, struct{}]{
 		fn: func(ctx context.Context, cmd verification.RequestEmailInput) (struct{}, error) {
 			return struct{}{}, requestVerification.RequestEmailConfirmation(ctx, cmd)
@@ -82,6 +102,22 @@ func Init(deps Dependencies, cfg public.Config) (*Module, error) {
 	})
 	resetPasswordUC := common.NewTransactionalUseCase(uow, verification.NewResetPasswordUseCase(identityRepo, tokenRepo, hasher))
 	twoFactorUC := newTwoFactorHandlers(twofactor.NewUseCase(identityRepo, cfg.Auth.TwoFactorIssuer), uow)
+
+	challengeUC := challenge.NewUseCase(challengeRepo, identityRepo, usersRepo, refreshRepo, tokenRepo, authPort, cfg.Auth.AccessTTL, cfg.Auth.RefreshTTL, cfg.Auth.TOTPAttempts, cfg.Auth.TOTPLockDuration, func(ctx context.Context, ident domain.Identity) error {
+		return requestVerification.RequestEmailConfirmation(ctx, verification.RequestEmailInput{Email: ident.ProviderUserID})
+	})
+	challengeStatusUC := common.NewTransactionalUseCase(uow, funcUseCase[challenge.StatusInput, login.Output]{
+		fn: challengeUC.Status,
+	})
+	challengeVerifyTOTP := common.NewTransactionalUseCase(uow, funcUseCase[challenge.VerifyTOTPInput, login.Output]{
+		fn: challengeUC.VerifyTOTP,
+	})
+	challengeResendEmail := common.NewTransactionalUseCase(uow, funcUseCase[challenge.ResendEmailInput, login.Output]{
+		fn: challengeUC.ResendEmail,
+	})
+	challengeConfirmEmail := common.NewTransactionalUseCase(uow, funcUseCase[challenge.ConfirmEmailInput, login.Output]{
+		fn: challengeUC.ConfirmEmail,
+	})
 
 	meUC := common.NewTransactionalUseCase(uow, profile.NewGet(usersRepo))
 	profileUC := common.NewTransactionalUseCase(uow, profile.NewUpdate(usersRepo))
@@ -99,6 +135,10 @@ func Init(deps Dependencies, cfg public.Config) (*Module, error) {
 		twoFactorUC.setup,
 		twoFactorUC.confirm,
 		twoFactorUC.disable,
+		common.UseCaseHandler(challengeStatusUC),
+		common.UseCaseHandler(challengeVerifyTOTP),
+		common.UseCaseHandler(challengeResendEmail),
+		common.UseCaseHandler(challengeConfirmEmail),
 		common.UseCaseHandler(meUC),
 		common.UseCaseHandler(profileUC),
 		common.UseCaseHandler(linkUC),

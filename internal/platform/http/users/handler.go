@@ -22,17 +22,21 @@ import (
 type Handler struct {
 	middleware phttp.UseCaseMiddleware
 
-	register             phttp.UseCaseHandler[usersapi.RegisterInput, login.Output]
-	login                phttp.UseCaseHandler[usersapi.LoginInput, login.Output]
-	telegram             phttp.UseCaseHandler[usersapi.TelegramLoginInput, login.Output]
-	refresh              phttp.UseCaseHandler[usersapi.RefreshInput, refresh.Output]
-	confirmEmail         phttp.UseCaseHandler[usersapi.ConfirmEmailInput, login.Output]
-	requestConfirm       phttp.UseCaseHandler[usersapi.RequestEmailInput, struct{}]
-	requestPasswordReset phttp.UseCaseHandler[usersapi.RequestPasswordResetInput, struct{}]
-	resetPassword        phttp.UseCaseHandler[usersapi.ResetPasswordInput, struct{}]
-	setupTwoFactor       phttp.UseCaseHandler[usersapi.TwoFactorSetupInput, usersapi.TwoFactorSetupOutput]
-	confirmTwoFactor     phttp.UseCaseHandler[usersapi.TwoFactorConfirmInput, struct{}]
-	disableTwoFactor     phttp.UseCaseHandler[usersapi.TwoFactorDisableInput, struct{}]
+	register              phttp.UseCaseHandler[usersapi.RegisterInput, login.Output]
+	login                 phttp.UseCaseHandler[usersapi.LoginInput, login.Output]
+	telegram              phttp.UseCaseHandler[usersapi.TelegramLoginInput, login.Output]
+	refresh               phttp.UseCaseHandler[usersapi.RefreshInput, refresh.Output]
+	confirmEmail          phttp.UseCaseHandler[usersapi.ConfirmEmailInput, login.Output]
+	requestConfirm        phttp.UseCaseHandler[usersapi.RequestEmailInput, struct{}]
+	requestPasswordReset  phttp.UseCaseHandler[usersapi.RequestPasswordResetInput, struct{}]
+	resetPassword         phttp.UseCaseHandler[usersapi.ResetPasswordInput, struct{}]
+	setupTwoFactor        phttp.UseCaseHandler[usersapi.TwoFactorSetupInput, usersapi.TwoFactorSetupOutput]
+	confirmTwoFactor      phttp.UseCaseHandler[usersapi.TwoFactorConfirmInput, struct{}]
+	disableTwoFactor      phttp.UseCaseHandler[usersapi.TwoFactorDisableInput, struct{}]
+	challengeStatus       phttp.UseCaseHandler[usersapi.ChallengeStatusInput, login.Output]
+	challengeVerifyTOTP   phttp.UseCaseHandler[usersapi.ChallengeVerifyTOTPInput, login.Output]
+	challengeResendEmail  phttp.UseCaseHandler[usersapi.ChallengeResendEmailInput, login.Output]
+	challengeConfirmEmail phttp.UseCaseHandler[usersapi.ChallengeConfirmEmailInput, login.Output]
 
 	getMe  phttp.UseCaseHandler[usersapi.GetProfileInput, profile.Output]
 	update phttp.UseCaseHandler[usersapi.UpdateProfileInput, profile.Output]
@@ -74,6 +78,18 @@ func NewHandler(svc usersapi.Service, middleware phttp.UseCaseMiddleware) *Handl
 		}),
 		disableTwoFactor: phttp.UseCaseFunc[usersapi.TwoFactorDisableInput, struct{}](func(ctx context.Context, cmd usersapi.TwoFactorDisableInput) (struct{}, error) {
 			return struct{}{}, svc.DisableTwoFactor(ctx, cmd)
+		}),
+		challengeStatus: phttp.UseCaseFunc[usersapi.ChallengeStatusInput, login.Output](func(ctx context.Context, cmd usersapi.ChallengeStatusInput) (login.Output, error) {
+			return svc.ChallengeStatus(ctx, cmd)
+		}),
+		challengeVerifyTOTP: phttp.UseCaseFunc[usersapi.ChallengeVerifyTOTPInput, login.Output](func(ctx context.Context, cmd usersapi.ChallengeVerifyTOTPInput) (login.Output, error) {
+			return svc.VerifyChallengeTOTP(ctx, cmd)
+		}),
+		challengeResendEmail: phttp.UseCaseFunc[usersapi.ChallengeResendEmailInput, login.Output](func(ctx context.Context, cmd usersapi.ChallengeResendEmailInput) (login.Output, error) {
+			return svc.ResendChallengeEmail(ctx, cmd)
+		}),
+		challengeConfirmEmail: phttp.UseCaseFunc[usersapi.ChallengeConfirmEmailInput, login.Output](func(ctx context.Context, cmd usersapi.ChallengeConfirmEmailInput) (login.Output, error) {
+			return svc.ConfirmChallengeEmail(ctx, cmd)
 		}),
 		getMe: phttp.UseCaseFunc[usersapi.GetProfileInput, profile.Output](func(ctx context.Context, cmd usersapi.GetProfileInput) (profile.Output, error) {
 			return svc.GetMe(ctx, cmd)
@@ -138,6 +154,92 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		phttp.WriteError(w, status, code, msg)
 		return
 	}
+	writeAuthResponse(w, out)
+}
+
+func (h *Handler) ChallengeStatus(w http.ResponseWriter, r *http.Request) {
+	var req dto.ChallengeRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		phttp.WriteError(w, http.StatusBadRequest, "invalid_json", "Invalid JSON")
+		return
+	}
+
+	out, err := phttp.HandleUseCase(h.middleware, r, h.challengeStatus, usersapi.ChallengeStatusInput{ChallengeID: req.ChallengeID})
+	if err != nil {
+		status, code, msg := mapError(err)
+		phttp.WriteError(w, status, code, msg)
+		return
+	}
+	writeAuthResponse(w, out)
+}
+
+func (h *Handler) VerifyChallengeTOTP(w http.ResponseWriter, r *http.Request) {
+	var req dto.ChallengeTOTPRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		phttp.WriteError(w, http.StatusBadRequest, "invalid_json", "Invalid JSON")
+		return
+	}
+	out, err := phttp.HandleUseCase(h.middleware, r, h.challengeVerifyTOTP, usersapi.ChallengeVerifyTOTPInput{ChallengeID: req.ChallengeID, Code: req.Code})
+	if err != nil {
+		status, code, msg := mapError(err)
+		phttp.WriteError(w, status, code, msg)
+		return
+	}
+	writeAuthResponse(w, out)
+}
+
+func (h *Handler) ResendChallengeEmail(w http.ResponseWriter, r *http.Request) {
+	var req dto.ChallengeRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		phttp.WriteError(w, http.StatusBadRequest, "invalid_json", "Invalid JSON")
+		return
+	}
+	out, err := phttp.HandleUseCase(h.middleware, r, h.challengeResendEmail, usersapi.ChallengeResendEmailInput{ChallengeID: req.ChallengeID})
+	if err != nil {
+		status, code, msg := mapError(err)
+		phttp.WriteError(w, status, code, msg)
+		return
+	}
+	writeAuthResponse(w, out)
+}
+
+func (h *Handler) ConfirmChallengeEmail(w http.ResponseWriter, r *http.Request) {
+	var req dto.ChallengeConfirmEmailRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		phttp.WriteError(w, http.StatusBadRequest, "invalid_json", "Invalid JSON")
+		return
+	}
+	out, err := phttp.HandleUseCase(h.middleware, r, h.challengeConfirmEmail, usersapi.ChallengeConfirmEmailInput{ChallengeID: req.ChallengeID, Token: req.Token})
+	if err != nil {
+		status, code, msg := mapError(err)
+		phttp.WriteError(w, status, code, msg)
+		return
+	}
+	writeAuthResponse(w, out)
+}
+
+func toChallengeDTO(info *login.ChallengeInfo, status string) *dto.ChallengeResponse {
+	if info == nil {
+		return nil
+	}
+	return &dto.ChallengeResponse{
+		Status:         status,
+		ChallengeID:    info.ID,
+		Type:           info.Type,
+		RequiredSteps:  info.RequiredSteps,
+		CompletedSteps: info.CompletedSteps,
+		ExpiresIn:      info.ExpiresIn,
+		MaskedEmail:    info.MaskedEmail,
+		AttemptsLeft:   info.AttemptsLeft,
+		LockUntil:      info.LockUntil,
+	}
+}
+
+func writeAuthResponse(w http.ResponseWriter, out login.Output) {
+	if out.Status == "challenge_required" && out.Challenge != nil {
+		phttp.WriteJSON(w, http.StatusOK, toChallengeDTO(out.Challenge, out.Status))
+		return
+	}
 
 	phttp.WriteJSON(w, http.StatusOK, dto.LoginResponse{
 		UserProfileResponse: dto.UserProfileResponse{
@@ -152,6 +254,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 			AccessToken:  out.AccessToken,
 			RefreshToken: out.RefreshToken,
 		},
+		Challenge: toChallengeDTO(out.Challenge, out.Status),
 	})
 }
 
