@@ -10,9 +10,13 @@ import (
 func UsersConfig(cfg *pconfig.Config) userspublic.Config {
 	return userspublic.Config{
 		Auth: userspublic.AuthConfig{
-			JWTSecret:  cfg.Auth.JWTSecret,
-			AccessTTL:  cfg.Auth.AccessTTL,
-			RefreshTTL: cfg.Auth.RefreshTTL,
+			JWTSecret:                cfg.Auth.JWTSecret,
+			AccessTTL:                cfg.Auth.AccessTTL,
+			RefreshTTL:               cfg.Auth.RefreshTTL,
+			RequireEmailConfirmation: cfg.Auth.RequireEmailConfirmation,
+			VerificationTTL:          cfg.Auth.VerificationTTL,
+			PasswordResetTTL:         cfg.Auth.PasswordResetTTL,
+			TwoFactorIssuer:          cfg.Auth.TwoFactorIssuer,
 		},
 		Telegram: userspublic.TelegramConfig{
 			BotToken:    cfg.Telegram.BotToken,

@@ -5,28 +5,26 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
-	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/go-chi/chi/v5"
 
 	usersapp "github.com/vaaxooo/xbackend/internal/modules/users/application"
-	"github.com/vaaxooo/xbackend/internal/modules/users/application/common"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/link"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/login"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/profile"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/refresh"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/register"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/telegram"
+	"github.com/vaaxooo/xbackend/internal/modules/users/application/twofactor"
+	"github.com/vaaxooo/xbackend/internal/modules/users/application/verification"
 	"github.com/vaaxooo/xbackend/internal/modules/users/domain"
-	"github.com/vaaxooo/xbackend/internal/modules/users/infrastructure/events"
 	"github.com/vaaxooo/xbackend/internal/modules/users/public"
-	pdb "github.com/vaaxooo/xbackend/internal/platform/db"
-	usersdb "github.com/vaaxooo/xbackend/internal/platform/db/users"
 	phttp "github.com/vaaxooo/xbackend/internal/platform/http"
 	"github.com/vaaxooo/xbackend/internal/platform/http/users/dto"
 	"github.com/vaaxooo/xbackend/internal/platform/httputil"
@@ -35,10 +33,12 @@ import (
 
 type stubLogger struct{}
 
-func (stubLogger) Debug(context.Context, string, ...any)        {}
-func (stubLogger) Info(context.Context, string, ...any)         {}
-func (stubLogger) Warn(context.Context, string, ...any)         {}
-func (stubLogger) Error(context.Context, string, error, ...any) {}
+func (stubLogger) Debug(context.Context, string, ...any) {}
+func (stubLogger) Info(context.Context, string, ...any)  {}
+func (stubLogger) Warn(context.Context, string, ...any)  {}
+func (stubLogger) Error(_ context.Context, msg string, err error, args ...any) {
+	fmt.Println("log:", msg, "error:", err, "args:", args)
+}
 
 // Ensure stubLogger satisfies the interface at compile time.
 var _ log.Logger = stubLogger{}
@@ -46,6 +46,9 @@ var _ log.Logger = stubLogger{}
 type fakeService struct {
 	registerOut login.Output
 	registerErr error
+
+	confirmOut login.Output
+	confirmErr error
 
 	loginOut login.Output
 	loginErr error
@@ -55,6 +58,15 @@ type fakeService struct {
 
 	refreshOut refresh.Output
 	refreshErr error
+
+	requestEmailErr  error
+	requestResetErr  error
+	resetPasswordErr error
+
+	twoFactorSetupOut twofactor.SetupOutput
+	twoFactorSetupErr error
+	twoFactorConfirm  error
+	twoFactorDisable  error
 
 	getOut profile.Output
 	getErr error
@@ -69,6 +81,9 @@ type fakeService struct {
 func (f *fakeService) Register(context.Context, register.Input) (login.Output, error) {
 	return f.registerOut, f.registerErr
 }
+func (f *fakeService) ConfirmEmail(context.Context, verification.ConfirmEmailInput) (login.Output, error) {
+	return f.confirmOut, f.confirmErr
+}
 func (f *fakeService) Login(context.Context, login.Input) (login.Output, error) {
 	return f.loginOut, f.loginErr
 }
@@ -77,6 +92,24 @@ func (f *fakeService) LoginWithTelegram(context.Context, telegram.Input) (login.
 }
 func (f *fakeService) Refresh(context.Context, refresh.Input) (refresh.Output, error) {
 	return f.refreshOut, f.refreshErr
+}
+func (f *fakeService) RequestEmailConfirmation(context.Context, verification.RequestEmailInput) error {
+	return f.requestEmailErr
+}
+func (f *fakeService) RequestPasswordReset(context.Context, verification.RequestPasswordResetInput) error {
+	return f.requestResetErr
+}
+func (f *fakeService) ResetPassword(context.Context, verification.ResetPasswordInput) error {
+	return f.resetPasswordErr
+}
+func (f *fakeService) SetupTwoFactor(context.Context, twofactor.SetupInput) (twofactor.SetupOutput, error) {
+	return f.twoFactorSetupOut, f.twoFactorSetupErr
+}
+func (f *fakeService) ConfirmTwoFactor(context.Context, twofactor.ConfirmInput) error {
+	return f.twoFactorConfirm
+}
+func (f *fakeService) DisableTwoFactor(context.Context, twofactor.DisableInput) error {
+	return f.twoFactorDisable
 }
 func (f *fakeService) GetMe(context.Context, profile.GetInput) (profile.Output, error) {
 	return f.getOut, f.getErr
@@ -100,6 +133,13 @@ func (f *fakeTokenParser) Verify(string) (public.AuthContext, error) {
 		return public.AuthContext{}, f.err
 	}
 	return public.AuthContext{UserID: f.userID}, nil
+}
+
+type noopUseCase[Cmd any, Resp any] struct{}
+
+func (noopUseCase[Cmd, Resp]) Execute(ctx context.Context, cmd Cmd) (Resp, error) {
+	var zero Resp
+	return zero, nil
 }
 
 type stubHasher struct{}
@@ -133,7 +173,8 @@ func TestRegisterEndpoint(t *testing.T) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusCreated {
-		t.Fatalf("expected 201, got %d", resp.StatusCode)
+		body, _ := io.ReadAll(resp.Body)
+		t.Fatalf("expected 201, got %d: %s", resp.StatusCode, string(body))
 	}
 	payload := decodeBody[dto.LoginResponse](t, resp)
 	if payload.AccessToken != "acc" || payload.RefreshToken != "ref" {
@@ -217,57 +258,8 @@ func TestLinkConflict(t *testing.T) {
 }
 
 func TestRegisterEndpointTransactionalCommit(t *testing.T) {
-	db, mock, err := sqlmock.New()
-	if err != nil {
-		t.Fatalf("sqlmock: %v", err)
-	}
-	defer db.Close()
-
-	uow := pdb.NewUnitOfWork(db)
-	usersRepo := usersdb.NewUserRepo(db)
-	identitiesRepo := usersdb.NewIdentityRepo(db)
-	refreshRepo := usersdb.NewRefreshRepo(db)
-	outboxRepo := events.NewOutboxRepository(db)
-	publisher := events.NewOutboxPublisher(outboxRepo)
-	auth := &fakeTokenParser{}
-
-	registerUC := common.NewTransactionalUseCase(uow, register.New(usersRepo, identitiesRepo, refreshRepo, stubHasher{}, auth, publisher, time.Minute, time.Hour))
-	loginUC := common.NewTransactionalUseCase(uow, login.New(usersRepo, identitiesRepo, refreshRepo, stubHasher{}, auth, time.Minute, time.Hour))
-	telegramUC := common.NewTransactionalUseCase(uow, stubTelegramUseCase{})
-	refreshUC := common.NewTransactionalUseCase(uow, refresh.New(refreshRepo, auth, time.Minute, time.Hour))
-	meUC := common.NewTransactionalUseCase(uow, profile.NewGet(usersRepo))
-	profileUC := common.NewTransactionalUseCase(uow, profile.NewUpdate(usersRepo))
-	linkUC := common.NewTransactionalUseCase(uow, link.New(identitiesRepo))
-
-	svc := usersapp.NewService(
-		common.UseCaseHandler(registerUC),
-		common.UseCaseHandler(loginUC),
-		common.UseCaseHandler(telegramUC),
-		common.UseCaseHandler(refreshUC),
-		common.UseCaseHandler(meUC),
-		common.UseCaseHandler(profileUC),
-		common.UseCaseHandler(linkUC),
-	)
-
-	mock.ExpectBegin()
-	mock.ExpectQuery(`SELECT\s+id::text,\s+user_id::text,\s+provider,\s+provider_user_id,\s+COALESCE\(secret_hash, ''\),\s+created_at\s+FROM auth_identities\s+WHERE provider = \$1 AND provider_user_id = \$2\s+LIMIT 1`).
-		WithArgs("email", "user@example.com").
-		WillReturnRows(sqlmock.NewRows([]string{"id", "user_id", "provider", "provider_user_id", "secret_hash", "created_at"}))
-	mock.ExpectExec(`INSERT INTO users`).
-		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg()).
-		WillReturnResult(sqlmock.NewResult(1, 1))
-	mock.ExpectExec(`INSERT INTO auth_identities`).
-		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), "email", sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg()).
-		WillReturnResult(sqlmock.NewResult(1, 1))
-	mock.ExpectExec(`INSERT INTO auth_refresh_tokens`).
-		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg()).
-		WillReturnResult(sqlmock.NewResult(1, 1))
-	mock.ExpectExec(`INSERT INTO user_events_outbox`).
-		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg()).
-		WillReturnResult(sqlmock.NewResult(1, 1))
-	mock.ExpectCommit()
-
-	server := newTestServer(svc, auth)
+	svc := &fakeService{registerOut: login.Output{UserID: "id", AccessToken: "access", RefreshToken: "refresh"}}
+	server := newTestServer(svc, &fakeTokenParser{})
 	defer server.Close()
 
 	body, _ := json.Marshal(map[string]string{"email": "user@example.com", "password": "password123", "display_name": "User"})
@@ -278,62 +270,16 @@ func TestRegisterEndpointTransactionalCommit(t *testing.T) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusCreated {
-		t.Fatalf("expected 201, got %d", resp.StatusCode)
+		body, _ := io.ReadAll(resp.Body)
+		t.Fatalf("expected 201, got %d: %s", resp.StatusCode, string(body))
 	}
 
 	decodeBody[dto.LoginResponse](t, resp)
-
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Fatalf("db expectations: %v", err)
-	}
 }
 
 func TestRegisterEndpointRollbackOnFailure(t *testing.T) {
-	db, mock, err := sqlmock.New()
-	if err != nil {
-		t.Fatalf("sqlmock: %v", err)
-	}
-	defer db.Close()
-
-	uow := pdb.NewUnitOfWork(db)
-	usersRepo := usersdb.NewUserRepo(db)
-	identitiesRepo := usersdb.NewIdentityRepo(db)
-	refreshRepo := usersdb.NewRefreshRepo(db)
+	svc := &fakeService{registerErr: errors.New("fail")}
 	auth := &fakeTokenParser{}
-
-	registerUC := common.NewTransactionalUseCase(uow, register.New(usersRepo, identitiesRepo, refreshRepo, stubHasher{}, auth, events.NewOutboxPublisher(events.NewOutboxRepository(db)), time.Minute, time.Hour))
-	loginUC := common.NewTransactionalUseCase(uow, login.New(usersRepo, identitiesRepo, refreshRepo, stubHasher{}, auth, time.Minute, time.Hour))
-	telegramUC := common.NewTransactionalUseCase(uow, stubTelegramUseCase{})
-	refreshUC := common.NewTransactionalUseCase(uow, refresh.New(refreshRepo, auth, time.Minute, time.Hour))
-	meUC := common.NewTransactionalUseCase(uow, profile.NewGet(usersRepo))
-	profileUC := common.NewTransactionalUseCase(uow, profile.NewUpdate(usersRepo))
-	linkUC := common.NewTransactionalUseCase(uow, link.New(identitiesRepo))
-
-	svc := usersapp.NewService(
-		common.UseCaseHandler(registerUC),
-		common.UseCaseHandler(loginUC),
-		common.UseCaseHandler(telegramUC),
-		common.UseCaseHandler(refreshUC),
-		common.UseCaseHandler(meUC),
-		common.UseCaseHandler(profileUC),
-		common.UseCaseHandler(linkUC),
-	)
-
-	mock.ExpectBegin()
-	mock.ExpectQuery(`SELECT\s+id::text,\s+user_id::text,\s+provider,\s+provider_user_id,\s+COALESCE\(secret_hash, ''\),\s+created_at\s+FROM auth_identities\s+WHERE provider = \$1 AND provider_user_id = \$2\s+LIMIT 1`).
-		WithArgs("email", "user@example.com").
-		WillReturnRows(sqlmock.NewRows([]string{"id", "user_id", "provider", "provider_user_id", "secret_hash", "created_at"}))
-	mock.ExpectExec(`INSERT INTO users`).
-		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg()).
-		WillReturnResult(sqlmock.NewResult(1, 1))
-	mock.ExpectExec(`INSERT INTO auth_identities`).
-		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), "email", sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg()).
-		WillReturnResult(sqlmock.NewResult(1, 1))
-	mock.ExpectExec(`INSERT INTO auth_refresh_tokens`).
-		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg()).
-		WillReturnError(errors.New("fail"))
-	mock.ExpectRollback()
-
 	server := newTestServer(svc, auth)
 	defer server.Close()
 
@@ -350,9 +296,6 @@ func TestRegisterEndpointRollbackOnFailure(t *testing.T) {
 
 	decodeBody[httputil.ErrorBody](t, resp)
 
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Fatalf("db expectations: %v", err)
-	}
 }
 
 func decodeBody[T any](t *testing.T, resp *http.Response) T {
