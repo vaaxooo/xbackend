@@ -7,9 +7,11 @@ import (
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/link"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/login"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/profile"
-	"github.com/vaaxooo/xbackend/internal/modules/users/application/refresh"
-	"github.com/vaaxooo/xbackend/internal/modules/users/application/register"
-	"github.com/vaaxooo/xbackend/internal/modules/users/application/telegram"
+        "github.com/vaaxooo/xbackend/internal/modules/users/application/refresh"
+        "github.com/vaaxooo/xbackend/internal/modules/users/application/register"
+        "github.com/vaaxooo/xbackend/internal/modules/users/application/telegram"
+        "github.com/vaaxooo/xbackend/internal/modules/users/application/twofactor"
+        "github.com/vaaxooo/xbackend/internal/modules/users/application/verification"
 )
 
 type Service = application.Service
@@ -20,9 +22,13 @@ type Config struct {
 }
 
 type AuthConfig struct {
-	JWTSecret  string
-	AccessTTL  time.Duration
-	RefreshTTL time.Duration
+        JWTSecret                string
+        AccessTTL                time.Duration
+        RefreshTTL               time.Duration
+        RequireEmailConfirmation bool
+        VerificationTTL          time.Duration
+        PasswordResetTTL         time.Duration
+        TwoFactorIssuer          string
 }
 
 type TelegramConfig struct {
@@ -46,6 +52,14 @@ type LoginInput = login.Input
 type LoginOutput = login.Output
 type RefreshInput = refresh.Input
 type RefreshOutput = refresh.Output
+type ConfirmEmailInput = verification.ConfirmEmailInput
+type RequestEmailInput = verification.RequestEmailInput
+type RequestPasswordResetInput = verification.RequestPasswordResetInput
+type ResetPasswordInput = verification.ResetPasswordInput
+type TwoFactorSetupInput = twofactor.SetupInput
+type TwoFactorSetupOutput = twofactor.SetupOutput
+type TwoFactorConfirmInput = twofactor.ConfirmInput
+type TwoFactorDisableInput = twofactor.DisableInput
 type TelegramLoginInput = telegram.Input
 type GetProfileInput = profile.GetInput
 type UpdateProfileInput = profile.UpdateInput

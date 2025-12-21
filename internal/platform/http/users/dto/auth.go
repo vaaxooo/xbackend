@@ -7,8 +7,9 @@ type RegisterRequest struct {
 }
 
 type LoginRequest struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
+        Email    string `json:"email"`
+        Password string `json:"password"`
+        OTP       string `json:"otp_code"`
 }
 
 type TelegramLoginRequest struct {
@@ -20,8 +21,32 @@ type RefreshRequest struct {
 }
 
 type TokensResponse struct {
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
+        AccessToken  string `json:"access_token"`
+        RefreshToken string `json:"refresh_token"`
+}
+
+type ConfirmEmailRequest struct {
+        Email string `json:"email"`
+        Code  string `json:"code"`
+}
+
+type PasswordResetRequest struct {
+        Email string `json:"email"`
+}
+
+type PasswordResetConfirmRequest struct {
+        Email    string `json:"email"`
+        Code     string `json:"code"`
+        Password string `json:"password"`
+}
+
+type TwoFactorSetupResponse struct {
+        Secret string `json:"secret"`
+        URI    string `json:"uri"`
+}
+
+type TwoFactorCodeRequest struct {
+        Code string `json:"code"`
 }
 
 type UserProfileResponse struct {
