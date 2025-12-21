@@ -178,3 +178,5 @@ func (f *fakeIdentityRepo) GetByUserAndProvider(_ context.Context, userID UserID
 	}
 	return Identity{}, false, nil
 }
+
+func (f *fakeIdentityRepo) Update(context.Context, Identity) error { return f.err }

@@ -5,10 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pquerna/otp"
-	"github.com/pquerna/otp/totp"
-
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/common"
+	"github.com/vaaxooo/xbackend/internal/modules/users/application/totp"
 	"github.com/vaaxooo/xbackend/internal/modules/users/domain"
 )
 
@@ -60,9 +58,6 @@ func (uc *UseCase) Setup(ctx context.Context, in SetupInput) (SetupOutput, error
 	key, err := totp.Generate(totp.GenerateOpts{
 		Issuer:      uc.issuer,
 		AccountName: ident.ProviderUserID,
-		Algorithm:   otp.AlgorithmSHA1,
-		Period:      30,
-		Digits:      otp.DigitsSix,
 	})
 	if err != nil {
 		return SetupOutput{}, common.NormalizeError(err)

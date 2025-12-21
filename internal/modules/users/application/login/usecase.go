@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pquerna/otp/totp"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/common"
+	"github.com/vaaxooo/xbackend/internal/modules/users/application/totp"
 	"github.com/vaaxooo/xbackend/internal/modules/users/domain"
 )
 

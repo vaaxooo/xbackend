@@ -19,6 +19,10 @@ func (m *linkIdentityRepoMock) Create(_ context.Context, i domain.Identity) erro
 	return m.err
 }
 
+func (m *linkIdentityRepoMock) Update(_ context.Context, _ domain.Identity) error {
+	return m.err
+}
+
 func (m *linkIdentityRepoMock) GetByProvider(context.Context, string, string) (domain.Identity, bool, error) {
 	return domain.Identity{}, !m.available, m.err
 }
