@@ -7,6 +7,7 @@ import (
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/common"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/link"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/login"
+	"github.com/vaaxooo/xbackend/internal/modules/users/application/password"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/profile"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/refresh"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/register"
@@ -32,9 +33,10 @@ type service struct {
 	challengeResendEmail   common.Handler[challenge.ResendEmailInput, login.Output]
 	challengeConfirmEmail  common.Handler[challenge.ConfirmEmailInput, login.Output]
 
-	meUC      common.Handler[profile.GetInput, profile.Output]
-	profileUC common.Handler[profile.UpdateInput, profile.Output]
-	linkUC    common.Handler[link.Input, link.Output]
+	meUC       common.Handler[profile.GetInput, profile.Output]
+	profileUC  common.Handler[profile.UpdateInput, profile.Output]
+	passwordUC common.Handler[password.ChangeInput, struct{}]
+	linkUC     common.Handler[link.Input, link.Output]
 }
 
 func NewService(
@@ -55,6 +57,7 @@ func NewService(
 	challengeConfirmEmail common.Handler[challenge.ConfirmEmailInput, login.Output],
 	meUC common.Handler[profile.GetInput, profile.Output],
 	profileUC common.Handler[profile.UpdateInput, profile.Output],
+	passwordUC common.Handler[password.ChangeInput, struct{}],
 	linkUC common.Handler[link.Input, link.Output],
 ) Service {
 	return &service{
@@ -75,6 +78,7 @@ func NewService(
 		challengeConfirmEmail:  challengeConfirmEmail,
 		meUC:                   meUC,
 		profileUC:              profileUC,
+		passwordUC:             passwordUC,
 		linkUC:                 linkUC,
 	}
 }
@@ -150,6 +154,11 @@ func (s *service) GetMe(ctx context.Context, in profile.GetInput) (profile.Outpu
 
 func (s *service) UpdateProfile(ctx context.Context, in profile.UpdateInput) (profile.Output, error) {
 	return s.profileUC.Handle(ctx, in)
+}
+
+func (s *service) ChangePassword(ctx context.Context, in password.ChangeInput) error {
+	_, err := s.passwordUC.Handle(ctx, in)
+	return err
 }
 
 func (s *service) LinkProvider(ctx context.Context, in link.Input) (link.Output, error) {

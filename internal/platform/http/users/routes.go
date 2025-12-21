@@ -31,6 +31,7 @@ func RegisterV1(r chi.Router, svc public.Service, auth public.AuthPort) {
 		r.Group(func(r chi.Router) {
 			r.Use(middleware.RequireJWT(auth))
 			r.Post("/link", h.LinkProvider)
+			r.Post("/password/change", h.ChangePassword)
 			r.Post("/2fa/setup", h.SetupTwoFactor)
 			r.Post("/2fa/confirm", h.ConfirmTwoFactor)
 			r.Post("/2fa/disable", h.DisableTwoFactor)

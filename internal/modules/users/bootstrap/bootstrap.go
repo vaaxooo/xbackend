@@ -10,6 +10,7 @@ import (
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/common"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/link"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/login"
+	"github.com/vaaxooo/xbackend/internal/modules/users/application/password"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/profile"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/refresh"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/register"
@@ -121,6 +122,7 @@ func Init(deps Dependencies, cfg public.Config) (*Module, error) {
 
 	meUC := common.NewTransactionalUseCase(uow, profile.NewGet(usersRepo))
 	profileUC := common.NewTransactionalUseCase(uow, profile.NewUpdate(usersRepo))
+	changePasswordUC := common.NewTransactionalUseCase(uow, password.NewChange(identityRepo, hasher))
 	linkUC := link.New(identityRepo)
 
 	svc := usersapp.NewService(
@@ -141,6 +143,7 @@ func Init(deps Dependencies, cfg public.Config) (*Module, error) {
 		common.UseCaseHandler(challengeConfirmEmail),
 		common.UseCaseHandler(meUC),
 		common.UseCaseHandler(profileUC),
+		common.UseCaseHandler(changePasswordUC),
 		common.UseCaseHandler(linkUC),
 	)
 

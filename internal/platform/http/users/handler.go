@@ -38,9 +38,10 @@ type Handler struct {
 	challengeResendEmail  phttp.UseCaseHandler[usersapi.ChallengeResendEmailInput, login.Output]
 	challengeConfirmEmail phttp.UseCaseHandler[usersapi.ChallengeConfirmEmailInput, login.Output]
 
-	getMe  phttp.UseCaseHandler[usersapi.GetProfileInput, profile.Output]
-	update phttp.UseCaseHandler[usersapi.UpdateProfileInput, profile.Output]
-	link   phttp.UseCaseHandler[usersapi.LinkProviderInput, link.Output]
+	getMe          phttp.UseCaseHandler[usersapi.GetProfileInput, profile.Output]
+	update         phttp.UseCaseHandler[usersapi.UpdateProfileInput, profile.Output]
+	changePassword phttp.UseCaseHandler[usersapi.ChangePasswordInput, struct{}]
+	link           phttp.UseCaseHandler[usersapi.LinkProviderInput, link.Output]
 }
 
 func NewHandler(svc usersapi.Service, middleware phttp.UseCaseMiddleware) *Handler {
@@ -96,6 +97,9 @@ func NewHandler(svc usersapi.Service, middleware phttp.UseCaseMiddleware) *Handl
 		}),
 		update: phttp.UseCaseFunc[usersapi.UpdateProfileInput, profile.Output](func(ctx context.Context, cmd usersapi.UpdateProfileInput) (profile.Output, error) {
 			return svc.UpdateProfile(ctx, cmd)
+		}),
+		changePassword: phttp.UseCaseFunc[usersapi.ChangePasswordInput, struct{}](func(ctx context.Context, cmd usersapi.ChangePasswordInput) (struct{}, error) {
+			return struct{}{}, svc.ChangePassword(ctx, cmd)
 		}),
 		link: phttp.UseCaseFunc[usersapi.LinkProviderInput, link.Output](func(ctx context.Context, cmd usersapi.LinkProviderInput) (link.Output, error) {
 			return svc.LinkProvider(ctx, cmd)
@@ -445,6 +449,28 @@ func (h *Handler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 		DisplayName: out.DisplayName,
 		AvatarURL:   out.AvatarURL,
 	})
+}
+
+func (h *Handler) ChangePassword(w http.ResponseWriter, r *http.Request) {
+	uid, ok := httpctx.UserIDFromContext(r.Context())
+	if !ok {
+		phttp.WriteError(w, http.StatusUnauthorized, "unauthorized", "Unauthorized")
+		return
+	}
+
+	var req dto.ChangePasswordRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		phttp.WriteError(w, http.StatusBadRequest, "invalid_json", "Invalid JSON")
+		return
+	}
+
+	if _, err := phttp.HandleUseCase(h.middleware, r, h.changePassword, usersapi.ChangePasswordInput{UserID: uid, CurrentPassword: req.CurrentPassword, NewPassword: req.NewPassword}); err != nil {
+		status, code, msg := mapError(err)
+		phttp.WriteError(w, status, code, msg)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *Handler) LinkProvider(w http.ResponseWriter, r *http.Request) {

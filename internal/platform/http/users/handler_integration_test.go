@@ -18,6 +18,7 @@ import (
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/challenge"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/link"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/login"
+	"github.com/vaaxooo/xbackend/internal/modules/users/application/password"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/profile"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/refresh"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/register"
@@ -75,6 +76,8 @@ type fakeService struct {
 	updateOut profile.Output
 	updateErr error
 
+	changePasswordErr error
+
 	linkOut link.Output
 	linkErr error
 
@@ -120,6 +123,9 @@ func (f *fakeService) GetMe(context.Context, profile.GetInput) (profile.Output, 
 }
 func (f *fakeService) UpdateProfile(context.Context, profile.UpdateInput) (profile.Output, error) {
 	return f.updateOut, f.updateErr
+}
+func (f *fakeService) ChangePassword(context.Context, password.ChangeInput) error {
+	return f.changePasswordErr
 }
 func (f *fakeService) LinkProvider(context.Context, link.Input) (link.Output, error) {
 	return f.linkOut, f.linkErr
@@ -244,6 +250,45 @@ func TestProfileEndpoints(t *testing.T) {
 	}
 	defer resp.Body.Close()
 	decodeBody[dto.UserProfileResponse](t, resp)
+}
+
+func TestChangePassword(t *testing.T) {
+	svc := &fakeService{}
+	server := newTestServer(svc, &fakeTokenParser{userID: "user"})
+	defer server.Close()
+
+	body, _ := json.Marshal(map[string]string{"current_password": "old", "new_password": "newpassword"})
+	req, _ := http.NewRequest(http.MethodPost, server.URL+"/api/v1/auth/password/change", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer token")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("http error: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusNoContent {
+		t.Fatalf("expected 204, got %d", resp.StatusCode)
+	}
+}
+
+func TestChangePasswordUnauthorized(t *testing.T) {
+	svc := &fakeService{changePasswordErr: domain.ErrInvalidCredentials}
+	server := newTestServer(svc, &fakeTokenParser{userID: "user"})
+	defer server.Close()
+
+	body, _ := json.Marshal(map[string]string{"current_password": "old", "new_password": "newpassword"})
+	req, _ := http.NewRequest(http.MethodPost, server.URL+"/api/v1/auth/password/change", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer token")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("http error: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("expected 401, got %d", resp.StatusCode)
+	}
+	decodeBody[httputil.ErrorBody](t, resp)
 }
 
 func TestRefreshUnauthorized(t *testing.T) {
