@@ -1,5 +1,7 @@
 package dto
 
+import "time"
+
 type RegisterRequest struct {
 	Email       string `json:"email"`
 	Password    string `json:"password"`
@@ -7,9 +9,9 @@ type RegisterRequest struct {
 }
 
 type LoginRequest struct {
-        Email    string `json:"email"`
-        Password string `json:"password"`
-        OTP       string `json:"otp_code"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
+	OTP      string `json:"otp_code"`
 }
 
 type TelegramLoginRequest struct {
@@ -21,32 +23,32 @@ type RefreshRequest struct {
 }
 
 type TokensResponse struct {
-        AccessToken  string `json:"access_token"`
-        RefreshToken string `json:"refresh_token"`
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
 }
 
 type ConfirmEmailRequest struct {
-        Email string `json:"email"`
-        Code  string `json:"code"`
+	Email string `json:"email"`
+	Code  string `json:"code"`
 }
 
 type PasswordResetRequest struct {
-        Email string `json:"email"`
+	Email string `json:"email"`
 }
 
 type PasswordResetConfirmRequest struct {
-        Email    string `json:"email"`
-        Code     string `json:"code"`
-        Password string `json:"password"`
+	Email    string `json:"email"`
+	Code     string `json:"code"`
+	Password string `json:"password"`
 }
 
 type TwoFactorSetupResponse struct {
-        Secret string `json:"secret"`
-        URI    string `json:"uri"`
+	Secret string `json:"secret"`
+	URI    string `json:"uri"`
 }
 
 type TwoFactorCodeRequest struct {
-        Code string `json:"code"`
+	Code string `json:"code"`
 }
 
 type UserProfileResponse struct {
@@ -61,4 +63,31 @@ type UserProfileResponse struct {
 type LoginResponse struct {
 	UserProfileResponse
 	TokensResponse
+	Challenge *ChallengeResponse `json:"challenge,omitempty"`
+}
+
+type ChallengeResponse struct {
+	Status         string     `json:"status"`
+	ChallengeID    string     `json:"challenge_id"`
+	Type           string     `json:"challenge_type"`
+	RequiredSteps  []string   `json:"required_steps"`
+	CompletedSteps []string   `json:"completed_steps"`
+	ExpiresIn      int64      `json:"expires_in"`
+	MaskedEmail    string     `json:"masked_email,omitempty"`
+	AttemptsLeft   int        `json:"attempts_left,omitempty"`
+	LockUntil      *time.Time `json:"lock_until,omitempty"`
+}
+
+type ChallengeRequest struct {
+	ChallengeID string `json:"challenge_id"`
+}
+
+type ChallengeTOTPRequest struct {
+	ChallengeID string `json:"challenge_id"`
+	Code        string `json:"otp_code"`
+}
+
+type ChallengeConfirmEmailRequest struct {
+	ChallengeID string `json:"challenge_id"`
+	Token       string `json:"token"`
 }

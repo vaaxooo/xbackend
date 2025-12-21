@@ -13,6 +13,9 @@ type User struct {
 	DisplayName       string
 	AvatarURL         string
 	ProfileCustomized bool
+	Suspended         bool
+	SuspensionReason  string
+	BlockedUntil      *time.Time
 	CreatedAt         time.Time
 }
 
@@ -22,6 +25,7 @@ func NewUser(id UserID, displayName DisplayName, createdAt time.Time) User {
 		DisplayName:       displayName.String(),
 		AvatarURL:         "",
 		ProfileCustomized: false,
+		Suspended:         false,
 		CreatedAt:         createdAt,
 	}
 }

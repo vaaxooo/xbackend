@@ -4,14 +4,15 @@ import (
 	"time"
 
 	"github.com/vaaxooo/xbackend/internal/modules/users/application"
+	"github.com/vaaxooo/xbackend/internal/modules/users/application/challenge"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/link"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/login"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/profile"
-        "github.com/vaaxooo/xbackend/internal/modules/users/application/refresh"
-        "github.com/vaaxooo/xbackend/internal/modules/users/application/register"
-        "github.com/vaaxooo/xbackend/internal/modules/users/application/telegram"
-        "github.com/vaaxooo/xbackend/internal/modules/users/application/twofactor"
-        "github.com/vaaxooo/xbackend/internal/modules/users/application/verification"
+	"github.com/vaaxooo/xbackend/internal/modules/users/application/refresh"
+	"github.com/vaaxooo/xbackend/internal/modules/users/application/register"
+	"github.com/vaaxooo/xbackend/internal/modules/users/application/telegram"
+	"github.com/vaaxooo/xbackend/internal/modules/users/application/twofactor"
+	"github.com/vaaxooo/xbackend/internal/modules/users/application/verification"
 )
 
 type Service = application.Service
@@ -22,13 +23,16 @@ type Config struct {
 }
 
 type AuthConfig struct {
-        JWTSecret                string
-        AccessTTL                time.Duration
-        RefreshTTL               time.Duration
-        RequireEmailConfirmation bool
-        VerificationTTL          time.Duration
-        PasswordResetTTL         time.Duration
-        TwoFactorIssuer          string
+	JWTSecret                string
+	AccessTTL                time.Duration
+	RefreshTTL               time.Duration
+	RequireEmailConfirmation bool
+	VerificationTTL          time.Duration
+	PasswordResetTTL         time.Duration
+	TwoFactorIssuer          string
+	ChallengeTTL             time.Duration
+	TOTPLockDuration         time.Duration
+	TOTPAttempts             int
 }
 
 type TelegramConfig struct {
@@ -66,3 +70,7 @@ type UpdateProfileInput = profile.UpdateInput
 type ProfileOutput = profile.Output
 type LinkProviderInput = link.Input
 type LinkProviderOutput = link.Output
+type ChallengeStatusInput = challenge.StatusInput
+type ChallengeVerifyTOTPInput = challenge.VerifyTOTPInput
+type ChallengeResendEmailInput = challenge.ResendEmailInput
+type ChallengeConfirmEmailInput = challenge.ConfirmEmailInput

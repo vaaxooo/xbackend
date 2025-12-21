@@ -38,7 +38,16 @@ func TestRegisterUseCaseWritesOutboxInsideTransaction(t *testing.T) {
 		WithArgs("email", "john@example.com").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "user_id", "provider", "provider_user_id", "secret_hash", "email_confirmed_at", "totp_secret", "totp_confirmed_at", "created_at"}))
 	mock.ExpectExec(regexp.QuoteMeta("INSERT INTO users")).
-		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg()).
+		WithArgs(
+			sqlmock.AnyArg(),
+			sqlmock.AnyArg(),
+			sqlmock.AnyArg(),
+			sqlmock.AnyArg(),
+			sqlmock.AnyArg(),
+			sqlmock.AnyArg(),
+			sqlmock.AnyArg(),
+			sqlmock.AnyArg(),
+		).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 	mock.ExpectExec(regexp.QuoteMeta("INSERT INTO auth_identities")).
 		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), "email", sqlmock.AnyArg(), sqlmock.AnyArg(), nil, nil, nil, sqlmock.AnyArg()).

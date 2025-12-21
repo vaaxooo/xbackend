@@ -15,6 +15,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	usersapp "github.com/vaaxooo/xbackend/internal/modules/users/application"
+	"github.com/vaaxooo/xbackend/internal/modules/users/application/challenge"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/link"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/login"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/profile"
@@ -76,6 +77,9 @@ type fakeService struct {
 
 	linkOut link.Output
 	linkErr error
+
+	challengeOut login.Output
+	challengeErr error
 }
 
 func (f *fakeService) Register(context.Context, register.Input) (login.Output, error) {
@@ -119,6 +123,22 @@ func (f *fakeService) UpdateProfile(context.Context, profile.UpdateInput) (profi
 }
 func (f *fakeService) LinkProvider(context.Context, link.Input) (link.Output, error) {
 	return f.linkOut, f.linkErr
+}
+
+func (f *fakeService) ChallengeStatus(context.Context, challenge.StatusInput) (login.Output, error) {
+	return f.challengeOut, f.challengeErr
+}
+
+func (f *fakeService) VerifyChallengeTOTP(context.Context, challenge.VerifyTOTPInput) (login.Output, error) {
+	return f.challengeOut, f.challengeErr
+}
+
+func (f *fakeService) ResendChallengeEmail(context.Context, challenge.ResendEmailInput) (login.Output, error) {
+	return f.challengeOut, f.challengeErr
+}
+
+func (f *fakeService) ConfirmChallengeEmail(context.Context, challenge.ConfirmEmailInput) (login.Output, error) {
+	return f.challengeOut, f.challengeErr
 }
 
 type fakeTokenParser struct {

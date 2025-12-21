@@ -25,8 +25,15 @@ type RefreshTokenRepository interface {
 }
 
 type VerificationTokenRepository interface {
-	Create(ctx context.Context, token VerificationToken) error
-	GetLatest(ctx context.Context, identityID string, tokenType TokenType) (VerificationToken, bool, error)
-	GetByCode(ctx context.Context, identityID string, tokenType TokenType, code string) (VerificationToken, bool, error)
-	MarkUsed(ctx context.Context, tokenID string, usedAt time.Time) error
+        Create(ctx context.Context, token VerificationToken) error
+        GetLatest(ctx context.Context, identityID string, tokenType TokenType) (VerificationToken, bool, error)
+        GetByCode(ctx context.Context, identityID string, tokenType TokenType, code string) (VerificationToken, bool, error)
+        MarkUsed(ctx context.Context, tokenID string, usedAt time.Time) error
+}
+
+type ChallengeRepository interface {
+        Create(ctx context.Context, challenge Challenge) error
+        Update(ctx context.Context, challenge Challenge) error
+        GetByID(ctx context.Context, id string) (Challenge, bool, error)
+        GetPendingByUser(ctx context.Context, userID UserID) (Challenge, bool, error)
 }
