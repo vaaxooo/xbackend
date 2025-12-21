@@ -10,6 +10,10 @@ import (
 	userevents "github.com/vaaxooo/xbackend/internal/modules/users/application/events"
 )
 
+const userRegisteredEventType = "users.user_registered"
+const emailConfirmationRequestedType = "users.email_confirmation_requested"
+const passwordResetRequestedType = "users.password_reset_requested"
+
 // OutboxPublisher converts typed application events into raw outbox messages so
 // they can be dispatched asynchronously by a background worker.
 type OutboxPublisher struct {
@@ -21,10 +25,10 @@ func NewOutboxPublisher(repo *OutboxRepository) *OutboxPublisher {
 }
 
 func (p *OutboxPublisher) PublishUserRegistered(ctx context.Context, event userevents.UserRegistered) error {
-	payload, err := json.Marshal(event)
-	if err != nil {
-		return err
-	}
+        payload, err := json.Marshal(event)
+        if err != nil {
+                return err
+        }
 
 	return p.repo.Add(ctx, OutboxMessage{
 		ID:         uuid.New(),
@@ -58,8 +62,36 @@ func (p *OutboxPublisher) PublishPasswordResetRequested(ctx context.Context, eve
 		ID:         uuid.New(),
 		EventType:  EventTypePasswordResetRequested,
 		Payload:    payload,
-		OccurredAt: event.OccurredAt,
-	})
+                OccurredAt: event.OccurredAt,
+        })
+}
+
+func (p *OutboxPublisher) PublishEmailConfirmationRequested(ctx context.Context, event userevents.EmailConfirmationRequested) error {
+        payload, err := json.Marshal(event)
+        if err != nil {
+                return err
+        }
+
+        return p.repo.Add(ctx, OutboxMessage{
+                ID:         uuid.New(),
+                EventType:  emailConfirmationRequestedType,
+                Payload:    payload,
+                OccurredAt: event.OccurredAt,
+        })
+}
+
+func (p *OutboxPublisher) PublishPasswordResetRequested(ctx context.Context, event userevents.PasswordResetRequested) error {
+        payload, err := json.Marshal(event)
+        if err != nil {
+                return err
+        }
+
+        return p.repo.Add(ctx, OutboxMessage{
+                ID:         uuid.New(),
+                EventType:  passwordResetRequestedType,
+                Payload:    payload,
+                OccurredAt: event.OccurredAt,
+        })
 }
 
 // Ensure OutboxPublisher conforms to application contract.
