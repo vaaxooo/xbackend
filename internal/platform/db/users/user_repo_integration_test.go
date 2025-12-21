@@ -27,15 +27,24 @@ func TestUserRepoCreateAndGet(t *testing.T) {
 	user := domain.NewUser(domain.UserID("user-1"), displayName, time.Unix(0, 0))
 
 	mock.ExpectExec(regexp.QuoteMeta("INSERT INTO users")).
-		WithArgs(user.ID.String(), sqlmock.AnyArg(), nil, user.ProfileCustomized, user.CreatedAt).
+		WithArgs(
+			user.ID.String(),
+			sqlmock.AnyArg(),
+			nil,
+			user.ProfileCustomized,
+			user.Suspended,
+			nil,
+			nil,
+			user.CreatedAt,
+		).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
 	if err := repo.Create(context.Background(), user); err != nil {
 		t.Fatalf("create failed: %v", err)
 	}
 
-	rows := sqlmock.NewRows([]string{"id", "first_name", "last_name", "middle_name", "display_name", "avatar_url", "profile_customized", "created_at"}).
-		AddRow("user-1", "", "", "", "Display", "", false, user.CreatedAt)
+	rows := sqlmock.NewRows([]string{"id", "first_name", "last_name", "middle_name", "display_name", "avatar_url", "profile_customized", "suspended", "suspension_reason", "blocked_until", "created_at"}).
+		AddRow("user-1", "", "", "", "Display", "", false, false, "", nil, user.CreatedAt)
 	mock.ExpectQuery(regexp.QuoteMeta("SELECT\n                        id::text")).
 		WithArgs(user.ID.String()).
 		WillReturnRows(rows)
@@ -48,8 +57,8 @@ func TestUserRepoCreateAndGet(t *testing.T) {
 		t.Fatalf("unexpected user data: %+v", got)
 	}
 
-	updateRows := sqlmock.NewRows([]string{"id", "first_name", "last_name", "middle_name", "display_name", "avatar_url", "profile_customized", "created_at"}).
-		AddRow("user-1", "John", "", "", "Display", "", true, user.CreatedAt)
+	updateRows := sqlmock.NewRows([]string{"id", "first_name", "last_name", "middle_name", "display_name", "avatar_url", "profile_customized", "suspended", "suspension_reason", "blocked_until", "created_at"}).
+		AddRow("user-1", "John", "", "", "Display", "", true, false, "", nil, user.CreatedAt)
 	mock.ExpectQuery(regexp.QuoteMeta("UPDATE users")).WillReturnRows(updateRows)
 
 	patchedUser, err := got.ApplyPatch(domain.ProfilePatch{FirstName: ptr("John")})
