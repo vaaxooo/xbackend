@@ -41,6 +41,15 @@ func Load() (*Config, error) {
 			BotToken:    getEnv("TELEGRAM_BOT_TOKEN", ""),
 			InitDataTTL: getDuration("TELEGRAM_INIT_DATA_TTL", 24*time.Hour),
 		},
+		SMTP: SMTPConfig{
+			Host:     getEnv("SMTP_HOST", ""),
+			Port:     getInt("SMTP_PORT", 587),
+			Username: getEnv("SMTP_USERNAME", ""),
+			Password: getEnv("SMTP_PASSWORD", ""),
+			From:     getEnv("SMTP_FROM", ""),
+			UseTLS:   getBool("SMTP_USE_TLS", true),
+			Timeout:  getDuration("SMTP_TIMEOUT", 10*time.Second),
+		},
 	}
 
 	if cfg.DB.DSN == "" {

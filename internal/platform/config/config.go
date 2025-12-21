@@ -8,6 +8,7 @@ type Config struct {
 	DB       DBConfig
 	Auth     AuthConfig
 	Telegram TelegramConfig
+	SMTP     SMTPConfig
 }
 
 type AppConfig struct {
@@ -46,4 +47,14 @@ type AuthConfig struct {
 type TelegramConfig struct {
 	BotToken    string
 	InitDataTTL time.Duration
+}
+
+type SMTPConfig struct {
+	Host     string
+	Port     int
+	Username string
+	Password string
+	From     string
+	UseTLS   bool
+	Timeout  time.Duration
 }
