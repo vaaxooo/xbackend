@@ -3,6 +3,7 @@ package login
 type Input struct {
 	Email    string
 	Password string
+	OTP      string
 }
 type Output struct {
 	UserID       string

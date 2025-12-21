@@ -23,15 +23,15 @@ func TestIdentityRepoCreateAndGet(t *testing.T) {
 	identity := domain.NewEmailIdentity("user", mustEmail(t, "user@example.com"), "hash", time.Unix(0, 0))
 
 	mock.ExpectExec(regexp.QuoteMeta("INSERT INTO auth_identities")).
-		WithArgs(identity.ID, identity.UserID.String(), identity.Provider, identity.ProviderUserID, identity.SecretHash.String(), identity.CreatedAt).
+		WithArgs(identity.ID, identity.UserID.String(), identity.Provider, identity.ProviderUserID, identity.SecretHash.String(), nil, nil, nil, identity.CreatedAt).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
 	if err := repo.Create(context.Background(), identity); err != nil {
 		t.Fatalf("create failed: %v", err)
 	}
 
-	rows := sqlmock.NewRows([]string{"id", "user_id", "provider", "provider_user_id", "secret_hash", "created_at"}).
-		AddRow(identity.ID, identity.UserID.String(), identity.Provider, identity.ProviderUserID, "hash", identity.CreatedAt)
+	rows := sqlmock.NewRows([]string{"id", "user_id", "provider", "provider_user_id", "secret_hash", "email_confirmed_at", "totp_secret", "totp_confirmed_at", "created_at"}).
+		AddRow(identity.ID, identity.UserID.String(), identity.Provider, identity.ProviderUserID, "hash", nil, "", nil, identity.CreatedAt)
 	mock.ExpectQuery(regexp.QuoteMeta("SELECT\n            id::text,")).
 		WithArgs(identity.Provider, identity.ProviderUserID).
 		WillReturnRows(rows)

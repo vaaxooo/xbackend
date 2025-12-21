@@ -55,6 +55,7 @@ func (m *loginIdentityRepoMock) GetByProvider(context.Context, string, string) (
 func (m *loginIdentityRepoMock) GetByUserAndProvider(context.Context, domain.UserID, string) (domain.Identity, bool, error) {
 	return domain.Identity{}, false, errors.New("not implemented")
 }
+func (m *loginIdentityRepoMock) Update(context.Context, domain.Identity) error { return nil }
 
 type loginRefreshRepoMock struct{ created []domain.RefreshToken }
 
@@ -83,7 +84,7 @@ func TestLoginSuccess(t *testing.T) {
 	identity := domain.Identity{UserID: user.ID, SecretHash: "hash"}
 
 	uow := &loginUnitOfWorkMock{}
-	uc := common.NewTransactionalUseCase(uow, New(&loginUsersRepoMock{user: user}, &loginIdentityRepoMock{identity: identity, found: true}, &loginRefreshRepoMock{}, &loginHasherMock{}, &loginIssuerMock{token: "access"}, time.Minute, time.Hour))
+	uc := common.NewTransactionalUseCase(uow, New(&loginUsersRepoMock{user: user}, &loginIdentityRepoMock{identity: identity, found: true}, &loginRefreshRepoMock{}, &loginHasherMock{}, &loginIssuerMock{token: "access"}, time.Minute, time.Hour, false))
 
 	out, err := uc.Execute(context.Background(), Input{Email: "user@example.com", Password: "password123"})
 	if err != nil {
@@ -98,13 +99,13 @@ func TestLoginSuccess(t *testing.T) {
 }
 
 func TestLoginInvalidCredentials(t *testing.T) {
-	uc := common.NewTransactionalUseCase(&loginUnitOfWorkMock{}, New(&loginUsersRepoMock{}, &loginIdentityRepoMock{}, &loginRefreshRepoMock{}, &loginHasherMock{}, &loginIssuerMock{}, 0, 0))
+	uc := common.NewTransactionalUseCase(&loginUnitOfWorkMock{}, New(&loginUsersRepoMock{}, &loginIdentityRepoMock{}, &loginRefreshRepoMock{}, &loginHasherMock{}, &loginIssuerMock{}, 0, 0, false))
 
 	if _, err := uc.Execute(context.Background(), Input{Email: "bad", Password: "pw"}); !errors.Is(err, domain.ErrInvalidCredentials) {
 		t.Fatalf("expected invalid credentials for bad email, got %v", err)
 	}
 
-	uc = common.NewTransactionalUseCase(&loginUnitOfWorkMock{}, New(&loginUsersRepoMock{}, &loginIdentityRepoMock{found: true, identity: domain.Identity{UserID: "user"}}, &loginRefreshRepoMock{}, &loginHasherMock{compareErr: errors.New("fail")}, &loginIssuerMock{}, 0, 0))
+	uc = common.NewTransactionalUseCase(&loginUnitOfWorkMock{}, New(&loginUsersRepoMock{}, &loginIdentityRepoMock{found: true, identity: domain.Identity{UserID: "user"}}, &loginRefreshRepoMock{}, &loginHasherMock{compareErr: errors.New("fail")}, &loginIssuerMock{}, 0, 0, false))
 	if _, err := uc.Execute(context.Background(), Input{Email: "user@example.com", Password: "pw"}); !errors.Is(err, domain.ErrInvalidCredentials) {
 		t.Fatalf("expected invalid credentials for compare failure, got %v", err)
 	}

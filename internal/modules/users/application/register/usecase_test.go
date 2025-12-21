@@ -16,11 +16,12 @@ func TestUseCase_PublishesEventOnSuccess(t *testing.T) {
 	users := &stubUserRepo{}
 	identities := &stubIdentityRepo{}
 	refresh := &stubRefreshRepo{}
+	tokens := &stubVerificationTokenRepo{}
 	hasher := &stubHasher{}
 	tokenIssuer := &stubTokenIssuer{}
 	publisher := &stubEventPublisher{}
 
-	uc := common.NewTransactionalUseCase(uow, New(users, identities, refresh, hasher, tokenIssuer, publisher, time.Minute, time.Hour))
+	uc := common.NewTransactionalUseCase(uow, New(users, identities, refresh, tokens, hasher, tokenIssuer, publisher, time.Minute, time.Hour, time.Minute, true))
 
 	_, err := uc.Execute(context.Background(), Input{Email: "john@example.com", Password: "verystrong", DisplayName: "John"})
 	if err != nil {
@@ -40,11 +41,12 @@ func TestUseCase_InvalidDisplayName(t *testing.T) {
 	users := &stubUserRepo{}
 	identities := &stubIdentityRepo{}
 	refresh := &stubRefreshRepo{}
+	tokens := &stubVerificationTokenRepo{}
 	hasher := &stubHasher{}
 	tokenIssuer := &stubTokenIssuer{}
 	publisher := &stubEventPublisher{}
 
-	uc := common.NewTransactionalUseCase(uow, New(users, identities, refresh, hasher, tokenIssuer, publisher, time.Minute, time.Hour))
+	uc := common.NewTransactionalUseCase(uow, New(users, identities, refresh, tokens, hasher, tokenIssuer, publisher, time.Minute, time.Hour, time.Minute, true))
 
 	_, err := uc.Execute(context.Background(), Input{Email: "john@example.com", Password: "verystrong", DisplayName: " "})
 	if !errors.Is(err, domain.ErrInvalidDisplayName) {
@@ -80,6 +82,7 @@ func (stubIdentityRepo) GetByProvider(context.Context, string, string) (domain.I
 func (stubIdentityRepo) GetByUserAndProvider(context.Context, domain.UserID, string) (domain.Identity, bool, error) {
 	return domain.Identity{}, false, nil
 }
+func (stubIdentityRepo) Update(context.Context, domain.Identity) error { return nil }
 
 type stubRefreshRepo struct{}
 
@@ -108,5 +111,24 @@ func (s *stubEventPublisher) PublishUserRegistered(_ context.Context, e events.U
 	s.event = e
 	return nil
 }
+
+func (stubEventPublisher) PublishEmailConfirmationRequested(context.Context, events.EmailConfirmationRequested) error {
+	return nil
+}
+
+func (stubEventPublisher) PublishPasswordResetRequested(context.Context, events.PasswordResetRequested) error {
+	return nil
+}
+
+type stubVerificationTokenRepo struct{}
+
+func (stubVerificationTokenRepo) Create(context.Context, domain.VerificationToken) error { return nil }
+func (stubVerificationTokenRepo) GetLatest(context.Context, string, domain.TokenType) (domain.VerificationToken, bool, error) {
+	return domain.VerificationToken{}, false, nil
+}
+func (stubVerificationTokenRepo) GetByCode(context.Context, string, domain.TokenType, string) (domain.VerificationToken, bool, error) {
+	return domain.VerificationToken{}, false, nil
+}
+func (stubVerificationTokenRepo) MarkUsed(context.Context, string, time.Time) error { return nil }
 
 var _ common.EventPublisher = (*stubEventPublisher)(nil)
