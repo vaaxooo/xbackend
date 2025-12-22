@@ -37,18 +37,19 @@ func TestRegisterUseCaseWritesOutboxInsideTransaction(t *testing.T) {
 	mock.ExpectQuery(`SELECT\s+id::text,\s+user_id::text,\s+provider,\s+provider_user_id,\s+COALESCE\(secret_hash, ''\),\s+email_confirmed_at,\s+COALESCE\(totp_secret, ''\),\s+totp_confirmed_at,\s+created_at\s+FROM auth_identities\s+WHERE provider = \$1 AND provider_user_id = \$2\s+LIMIT 1`).
 		WithArgs("email", "john@example.com").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "user_id", "provider", "provider_user_id", "secret_hash", "email_confirmed_at", "totp_secret", "totp_confirmed_at", "created_at"}))
-	mock.ExpectExec(regexp.QuoteMeta("INSERT INTO users")).
-		WithArgs(
-			sqlmock.AnyArg(),
-			sqlmock.AnyArg(),
-			sqlmock.AnyArg(),
-			sqlmock.AnyArg(),
-			sqlmock.AnyArg(),
-			sqlmock.AnyArg(),
-			sqlmock.AnyArg(),
-			sqlmock.AnyArg(),
-		).
-		WillReturnResult(sqlmock.NewResult(1, 1))
+        mock.ExpectExec(regexp.QuoteMeta("INSERT INTO users")).
+                WithArgs(
+                        sqlmock.AnyArg(),
+                        sqlmock.AnyArg(),
+                        sqlmock.AnyArg(),
+                        sqlmock.AnyArg(),
+                        sqlmock.AnyArg(),
+                        sqlmock.AnyArg(),
+                        sqlmock.AnyArg(),
+                        sqlmock.AnyArg(),
+                        sqlmock.AnyArg(),
+                ).
+                WillReturnResult(sqlmock.NewResult(1, 1))
 	mock.ExpectExec(regexp.QuoteMeta("INSERT INTO auth_identities")).
 		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), "email", sqlmock.AnyArg(), sqlmock.AnyArg(), nil, nil, nil, sqlmock.AnyArg()).
 		WillReturnResult(sqlmock.NewResult(1, 1))
