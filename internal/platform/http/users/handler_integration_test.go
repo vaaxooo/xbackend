@@ -166,17 +166,20 @@ func (f *fakeService) RevokeOtherSessions(context.Context, session.RevokeOthersI
 }
 
 type fakeTokenParser struct {
-	userID string
-	err    error
+	userID    string
+	sessionID string
+	err       error
 }
 
-func (f *fakeTokenParser) Parse(string) (string, error)                { return f.userID, f.err }
-func (f *fakeTokenParser) Issue(string, time.Duration) (string, error) { return "token", nil }
+func (f *fakeTokenParser) Parse(string) (string, error) { return f.userID, f.err }
+func (f *fakeTokenParser) Issue(string, string, time.Duration) (string, error) {
+	return "token", nil
+}
 func (f *fakeTokenParser) Verify(string) (public.AuthContext, error) {
 	if f.err != nil {
 		return public.AuthContext{}, f.err
 	}
-	return public.AuthContext{UserID: f.userID}, nil
+	return public.AuthContext{UserID: f.userID, SessionID: f.sessionID}, nil
 }
 
 type noopUseCase[Cmd any, Resp any] struct{}
