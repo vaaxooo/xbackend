@@ -21,6 +21,7 @@ type ChallengeInfo struct {
 }
 type Output struct {
 	UserID       string
+	Email        string
 	FirstName    string
 	LastName     string
 	MiddleName   string

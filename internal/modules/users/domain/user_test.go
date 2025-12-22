@@ -9,7 +9,7 @@ import (
 func TestUserApplyPatch(t *testing.T) {
 	now := time.Now()
 	displayName, _ := NewDisplayName(" Name ")
-	user := NewUser(UserID("id"), displayName, now)
+	user := NewUser(UserID("id"), "user@example.com", displayName, now)
 	first := " John "
 	last := "Doe"
 	display := "New"
@@ -39,7 +39,7 @@ func TestUserApplyPatch(t *testing.T) {
 func TestUserApplyPatch_InvalidDisplayName(t *testing.T) {
 	now := time.Now()
 	displayName, _ := NewDisplayName("Name")
-	user := NewUser(UserID("id"), displayName, now)
+	user := NewUser(UserID("id"), "user@example.com", displayName, now)
 	tooShort := " "
 
 	if _, err := user.ApplyPatch(ProfilePatch{DisplayName: &tooShort}); !errors.Is(err, ErrInvalidDisplayName) {
@@ -50,7 +50,7 @@ func TestUserApplyPatch_InvalidDisplayName(t *testing.T) {
 func TestUserApplyPatch_InvalidAvatar(t *testing.T) {
 	now := time.Now()
 	displayName, _ := NewDisplayName("Name")
-	user := NewUser(UserID("id"), displayName, now)
+	user := NewUser(UserID("id"), "user@example.com", displayName, now)
 	invalid := "ftp://example.com/avatar.png"
 
 	if _, err := user.ApplyPatch(ProfilePatch{AvatarURL: &invalid}); !errors.Is(err, ErrInvalidAvatarURL) {

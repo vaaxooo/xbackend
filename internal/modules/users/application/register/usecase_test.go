@@ -48,9 +48,30 @@ func TestUseCase_InvalidDisplayName(t *testing.T) {
 
 	uc := common.NewTransactionalUseCase(uow, New(users, identities, refresh, tokens, hasher, tokenIssuer, publisher, time.Minute, time.Hour, time.Minute, true))
 
-	_, err := uc.Execute(context.Background(), Input{Email: "john@example.com", Password: "verystrong", DisplayName: " "})
+	_, err := uc.Execute(context.Background(), Input{Email: "john@example.com", Password: "verystrong", DisplayName: "a"})
 	if !errors.Is(err, domain.ErrInvalidDisplayName) {
 		t.Fatalf("expected invalid display name error, got %v", err)
+	}
+}
+
+func TestUseCase_DefaultDisplayNameWhenMissing(t *testing.T) {
+	uow := &stubUoW{}
+	users := &stubUserRepo{}
+	identities := &stubIdentityRepo{}
+	refresh := &stubRefreshRepo{}
+	tokens := &stubVerificationTokenRepo{}
+	hasher := &stubHasher{}
+	tokenIssuer := &stubTokenIssuer{}
+	publisher := &stubEventPublisher{}
+
+	uc := common.NewTransactionalUseCase(uow, New(users, identities, refresh, tokens, hasher, tokenIssuer, publisher, time.Minute, time.Hour, time.Minute, true))
+
+	out, err := uc.Execute(context.Background(), Input{Email: "john@example.com", Password: "verystrong", DisplayName: ""})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if out.DisplayName == "" || out.DisplayName == " " {
+		t.Fatalf("expected default display name, got %q", out.DisplayName)
 	}
 }
 

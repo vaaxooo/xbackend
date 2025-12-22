@@ -20,14 +20,15 @@ func NewUserRepo(db *sql.DB) *UserRepo {
 
 func (r *UserRepo) Create(ctx context.Context, user domain.User) error {
 	const q = `
-INSERT INTO users (id, display_name, avatar_url, profile_customized, suspended, suspension_reason, blocked_until, created_at)
-VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, $8)
+INSERT INTO users (id, email, display_name, avatar_url, profile_customized, suspended, suspension_reason, blocked_until, created_at)
+VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, $8, $9)
 `
 	exec := pdb.Executor(ctx, r.db)
 	_, err := exec.ExecContext(
 		ctx,
 		q,
 		user.ID.String(),
+		nullIfEmpty(user.Email),
 		nullIfEmpty(user.DisplayName),
 		nullIfEmpty(user.AvatarURL),
 		user.ProfileCustomized,
@@ -43,9 +44,10 @@ func (r *UserRepo) GetByID(ctx context.Context, userID domain.UserID) (domain.Us
 	const q = `
                 SELECT
                         id::text,
-			COALESCE(first_name, ''),
-			COALESCE(last_name, ''),
-			COALESCE(middle_name, ''),
+                        COALESCE(email, ''),
+                        COALESCE(first_name, ''),
+                        COALESCE(last_name, ''),
+                        COALESCE(middle_name, ''),
 COALESCE(display_name, ''),
 COALESCE(avatar_url, ''),
 profile_customized,
@@ -62,6 +64,7 @@ LIMIT 1
 	var id string
 	err := pdb.Executor(ctx, r.db).QueryRowContext(ctx, q, userID.String()).Scan(
 		&id,
+		&u.Email,
 		&u.FirstName,
 		&u.LastName,
 		&u.MiddleName,
@@ -99,6 +102,7 @@ func (r *UserRepo) UpdateProfile(
         WHERE id = $1::uuid
 RETURNING
 id::text,
+COALESCE(email, ''),
 COALESCE(first_name, ''),
 COALESCE(last_name, ''),
 COALESCE(middle_name, ''),
@@ -123,6 +127,7 @@ created_at
 		nullIfEmpty(in.AvatarURL),
 	).Scan(
 		&u.ID,
+		&u.Email,
 		&u.FirstName,
 		&u.LastName,
 		&u.MiddleName,

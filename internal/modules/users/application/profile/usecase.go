@@ -39,6 +39,7 @@ func (uc *GetUseCase) Execute(ctx context.Context, in GetInput) (Output, error) 
 
 	return Output{
 		UserID:      u.ID.String(),
+		Email:       u.Email,
 		FirstName:   u.FirstName,
 		LastName:    u.LastName,
 		MiddleName:  u.MiddleName,
@@ -82,6 +83,7 @@ func (uc *UpdateUseCase) Execute(ctx context.Context, in UpdateInput) (Output, e
 
 	return Output{
 		UserID:      u.ID.String(),
+		Email:       u.Email,
 		FirstName:   u.FirstName,
 		LastName:    u.LastName,
 		MiddleName:  u.MiddleName,

@@ -128,6 +128,7 @@ func (uc *UseCase) Execute(ctx context.Context, in Input) (Output, error) {
 		}
 		return Output{
 			UserID:      u.ID.String(),
+			Email:       ident.ProviderUserID,
 			FirstName:   u.FirstName,
 			LastName:    u.LastName,
 			MiddleName:  u.MiddleName,
@@ -167,6 +168,7 @@ func (uc *UseCase) Execute(ctx context.Context, in Input) (Output, error) {
 
 	return Output{
 		UserID:       u.ID.String(),
+		Email:        ident.ProviderUserID,
 		FirstName:    u.FirstName,
 		LastName:     u.LastName,
 		MiddleName:   u.MiddleName,

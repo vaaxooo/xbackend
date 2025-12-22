@@ -24,11 +24,12 @@ func TestUserRepoCreateAndGet(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create display name: %v", err)
 	}
-	user := domain.NewUser(domain.UserID("user-1"), displayName, time.Unix(0, 0))
+	user := domain.NewUser(domain.UserID("user-1"), "user@example.com", displayName, time.Unix(0, 0))
 
 	mock.ExpectExec(regexp.QuoteMeta("INSERT INTO users")).
 		WithArgs(
 			user.ID.String(),
+			sqlmock.AnyArg(),
 			sqlmock.AnyArg(),
 			nil,
 			user.ProfileCustomized,
@@ -43,8 +44,8 @@ func TestUserRepoCreateAndGet(t *testing.T) {
 		t.Fatalf("create failed: %v", err)
 	}
 
-	rows := sqlmock.NewRows([]string{"id", "first_name", "last_name", "middle_name", "display_name", "avatar_url", "profile_customized", "suspended", "suspension_reason", "blocked_until", "created_at"}).
-		AddRow("user-1", "", "", "", "Display", "", false, false, "", nil, user.CreatedAt)
+	rows := sqlmock.NewRows([]string{"id", "email", "first_name", "last_name", "middle_name", "display_name", "avatar_url", "profile_customized", "suspended", "suspension_reason", "blocked_until", "created_at"}).
+		AddRow("user-1", user.Email, "", "", "", "Display", "", false, false, "", nil, user.CreatedAt)
 	mock.ExpectQuery(regexp.QuoteMeta("SELECT\n                        id::text")).
 		WithArgs(user.ID.String()).
 		WillReturnRows(rows)
@@ -57,8 +58,8 @@ func TestUserRepoCreateAndGet(t *testing.T) {
 		t.Fatalf("unexpected user data: %+v", got)
 	}
 
-	updateRows := sqlmock.NewRows([]string{"id", "first_name", "last_name", "middle_name", "display_name", "avatar_url", "profile_customized", "suspended", "suspension_reason", "blocked_until", "created_at"}).
-		AddRow("user-1", "John", "", "", "Display", "", true, false, "", nil, user.CreatedAt)
+	updateRows := sqlmock.NewRows([]string{"id", "email", "first_name", "last_name", "middle_name", "display_name", "avatar_url", "profile_customized", "suspended", "suspension_reason", "blocked_until", "created_at"}).
+		AddRow("user-1", user.Email, "John", "", "", "Display", "", true, false, "", nil, user.CreatedAt)
 	mock.ExpectQuery(regexp.QuoteMeta("UPDATE users")).WillReturnRows(updateRows)
 
 	patchedUser, err := got.ApplyPatch(domain.ProfilePatch{FirstName: ptr("John")})
