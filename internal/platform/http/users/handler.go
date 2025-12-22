@@ -141,6 +141,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	phttp.WriteJSON(w, http.StatusCreated, dto.LoginResponse{
 		UserProfileResponse: dto.UserProfileResponse{
 			UserID:      out.UserID,
+			Email:       out.Email,
 			FirstName:   out.FirstName,
 			LastName:    out.LastName,
 			MiddleName:  out.MiddleName,
@@ -261,6 +262,7 @@ func writeAuthResponse(w http.ResponseWriter, out login.Output) {
 	phttp.WriteJSON(w, http.StatusOK, dto.LoginResponse{
 		UserProfileResponse: dto.UserProfileResponse{
 			UserID:      out.UserID,
+			Email:       out.Email,
 			FirstName:   out.FirstName,
 			LastName:    out.LastName,
 			MiddleName:  out.MiddleName,
@@ -294,6 +296,7 @@ func (h *Handler) TelegramLogin(w http.ResponseWriter, r *http.Request) {
 	phttp.WriteJSON(w, http.StatusOK, dto.LoginResponse{
 		UserProfileResponse: dto.UserProfileResponse{
 			UserID:      out.UserID,
+			Email:       out.Email,
 			FirstName:   out.FirstName,
 			LastName:    out.LastName,
 			MiddleName:  out.MiddleName,
@@ -349,6 +352,7 @@ func (h *Handler) ConfirmEmail(w http.ResponseWriter, r *http.Request) {
 	phttp.WriteJSON(w, http.StatusOK, dto.LoginResponse{
 		UserProfileResponse: dto.UserProfileResponse{
 			UserID:      out.UserID,
+			Email:       out.Email,
 			FirstName:   out.FirstName,
 			LastName:    out.LastName,
 			MiddleName:  out.MiddleName,
@@ -419,6 +423,7 @@ func (h *Handler) GetMe(w http.ResponseWriter, r *http.Request) {
 
 	phttp.WriteJSON(w, http.StatusOK, dto.UserProfileResponse{
 		UserID:      out.UserID,
+		Email:       out.Email,
 		FirstName:   out.FirstName,
 		LastName:    out.LastName,
 		MiddleName:  out.MiddleName,
@@ -456,6 +461,7 @@ func (h *Handler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 
 	phttp.WriteJSON(w, http.StatusOK, dto.UserProfileResponse{
 		UserID:      out.UserID,
+		Email:       out.Email,
 		FirstName:   out.FirstName,
 		LastName:    out.LastName,
 		MiddleName:  out.MiddleName,
@@ -665,7 +671,7 @@ func (h *Handler) DisableTwoFactor(w http.ResponseWriter, r *http.Request) {
 }
 
 func mapError(err error) (status int, code string, message string) {
-	if errors.Is(err, domain.ErrInvalidEmail) || errors.Is(err, domain.ErrWeakPassword) {
+	if errors.Is(err, domain.ErrInvalidEmail) || errors.Is(err, domain.ErrWeakPassword) || errors.Is(err, domain.ErrInvalidDisplayName) || errors.Is(err, domain.ErrInvalidAvatarURL) {
 		return http.StatusBadRequest, "validation_error", "Validation error"
 	}
 	if errors.Is(err, domain.ErrEmailAlreadyUsed) || errors.Is(err, domain.ErrIdentityAlreadyLinked) {

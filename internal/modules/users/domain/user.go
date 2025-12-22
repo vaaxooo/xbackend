@@ -7,6 +7,7 @@ import (
 
 type User struct {
 	ID                UserID
+	Email             string
 	FirstName         string
 	LastName          string
 	MiddleName        string
@@ -19,9 +20,10 @@ type User struct {
 	CreatedAt         time.Time
 }
 
-func NewUser(id UserID, displayName DisplayName, createdAt time.Time) User {
+func NewUser(id UserID, email string, displayName DisplayName, createdAt time.Time) User {
 	return User{
 		ID:                id,
+		Email:             email,
 		DisplayName:       displayName.String(),
 		AvatarURL:         "",
 		ProfileCustomized: false,

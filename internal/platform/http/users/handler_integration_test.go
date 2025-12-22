@@ -229,6 +229,27 @@ func TestRegisterEndpoint(t *testing.T) {
 	}
 }
 
+func TestRegisterEndpointValidationError(t *testing.T) {
+	svc := &fakeService{registerErr: domain.ErrInvalidDisplayName}
+	server := newTestServer(svc, &fakeTokenParser{})
+	defer server.Close()
+
+	body, _ := json.Marshal(map[string]string{"email": "user@example.com", "password": "password123"})
+
+	resp, err := http.Post(server.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(body))
+	if err != nil {
+		t.Fatalf("http error: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusBadRequest {
+		body, _ := io.ReadAll(resp.Body)
+		t.Fatalf("expected 400, got %d: %s", resp.StatusCode, string(body))
+	}
+
+	decodeBody[httputil.ErrorBody](t, resp)
+}
+
 func TestLoginUnauthorized(t *testing.T) {
 	svc := &fakeService{loginErr: domain.ErrInvalidCredentials}
 	server := newTestServer(svc, &fakeTokenParser{})

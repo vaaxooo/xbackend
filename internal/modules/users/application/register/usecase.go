@@ -2,6 +2,7 @@ package register
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/common"
@@ -72,7 +73,11 @@ func (uc *UseCase) Execute(ctx context.Context, in Input) (login.Output, error) 
 		return login.Output{}, common.NormalizeError(err)
 	}
 
-	displayName, err := domain.NewDisplayName(in.DisplayName)
+	displayNameInput := strings.TrimSpace(in.DisplayName)
+	if displayNameInput == "" {
+		displayNameInput = defaultDisplayName(email.String())
+	}
+	displayName, err := domain.NewDisplayName(displayNameInput)
 	if err != nil {
 		return login.Output{}, common.NormalizeError(err)
 	}
@@ -84,7 +89,7 @@ func (uc *UseCase) Execute(ctx context.Context, in Input) (login.Output, error) 
 
 	userID := domain.NewUserID()
 	now := time.Now().UTC()
-	user := domain.NewUser(userID, displayName, now)
+	user := domain.NewUser(userID, email.String(), displayName, now)
 	identity := domain.NewEmailIdentity(userID, email, hash, now)
 
 	var accessToken string
@@ -137,6 +142,7 @@ func (uc *UseCase) Execute(ctx context.Context, in Input) (login.Output, error) 
 
 	out := login.Output{
 		UserID:       userID.String(),
+		Email:        email.String(),
 		DisplayName:  displayName.String(),
 		AvatarURL:    "",
 		AccessToken:  accessToken,
@@ -144,6 +150,16 @@ func (uc *UseCase) Execute(ctx context.Context, in Input) (login.Output, error) 
 	}
 
 	return out, nil
+}
+
+func defaultDisplayName(email string) string {
+	if at := strings.IndexByte(email, '@'); at > 0 {
+		candidate := strings.TrimSpace(email[:at])
+		if l := len(candidate); l >= 2 && l <= 64 {
+			return candidate
+		}
+	}
+	return "User"
 }
 
 func (uc *UseCase) createEmailConfirmation(ctx context.Context, identity domain.Identity, email string, now time.Time) error {

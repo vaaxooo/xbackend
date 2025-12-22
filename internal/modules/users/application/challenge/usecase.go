@@ -114,6 +114,11 @@ func (uc *UseCase) VerifyTOTP(ctx context.Context, in VerifyTOTPInput) (Output, 
 	if challenge.LockUntil != nil && challenge.LockUntil.After(now) {
 		return uc.challengeResponse(ctx, challenge, nil)
 	}
+	if challenge.LockUntil != nil && challenge.LockUntil.Before(now) {
+		challenge = challenge.WithLockUntil(nil, now)
+		challenge = challenge.WithAttemptsLeft(uc.totpAttempts, now)
+		_ = uc.challenges.Update(ctx, challenge)
+	}
 	if !challenge.NeedsStep(domain.ChallengeStepTOTP) {
 		return uc.challengeResponse(ctx, challenge, nil)
 	}
@@ -130,7 +135,6 @@ func (uc *UseCase) VerifyTOTP(ctx context.Context, in VerifyTOTPInput) (Output, 
 		if left == 0 {
 			lock := now.Add(uc.totpLock)
 			challenge = challenge.WithLockUntil(&lock, now)
-			challenge = challenge.WithAttemptsLeft(uc.totpAttempts, now)
 		}
 		_ = uc.challenges.Update(ctx, challenge)
 		return uc.challengeResponse(ctx, challenge, &ident)
@@ -199,6 +203,7 @@ func (uc *UseCase) challengeResponse(ctx context.Context, challenge domain.Chall
 	}
 	out := Output{
 		UserID:      user.ID.String(),
+		Email:       user.Email,
 		FirstName:   user.FirstName,
 		LastName:    user.LastName,
 		MiddleName:  user.MiddleName,

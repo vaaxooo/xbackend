@@ -137,7 +137,7 @@ func (uc *UseCase) registerUser(ctx context.Context, payload telegramUser) (doma
 
 	userID := domain.NewUserID()
 	now := time.Now().UTC()
-	user := domain.NewUser(userID, displayName, now)
+	user := domain.NewUser(userID, "", displayName, now)
 	user.FirstName = strings.TrimSpace(payload.FirstName)
 	user.LastName = strings.TrimSpace(payload.LastName)
 
