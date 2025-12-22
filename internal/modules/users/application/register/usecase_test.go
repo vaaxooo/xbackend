@@ -90,7 +90,16 @@ func (stubRefreshRepo) Create(context.Context, domain.RefreshToken) error { retu
 func (stubRefreshRepo) GetByHash(context.Context, string) (domain.RefreshToken, bool, error) {
 	return domain.RefreshToken{}, false, errors.New("not implemented")
 }
+func (stubRefreshRepo) GetByID(context.Context, string) (domain.RefreshToken, bool, error) {
+	return domain.RefreshToken{}, false, errors.New("not implemented")
+}
+func (stubRefreshRepo) ListByUser(context.Context, domain.UserID) ([]domain.RefreshToken, error) {
+	return nil, errors.New("not implemented")
+}
 func (stubRefreshRepo) Revoke(context.Context, string) error { return errors.New("not implemented") }
+func (stubRefreshRepo) RevokeAllExcept(context.Context, domain.UserID, []string) error {
+	return errors.New("not implemented")
+}
 
 type stubHasher struct{}
 
