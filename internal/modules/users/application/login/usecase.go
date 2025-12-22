@@ -160,7 +160,7 @@ func (uc *UseCase) Execute(ctx context.Context, in Input) (Output, error) {
 	refreshHash := common.HashToken(refreshRaw)
 
 	now = time.Now().UTC()
-	if err := uc.refresh.Create(ctx, domain.NewRefreshTokenRecord(u.ID, refreshHash, now, uc.refreshTTL)); err != nil {
+	if err := uc.refresh.Create(ctx, common.NewRefreshRecord(ctx, u.ID, refreshHash, now, uc.refreshTTL)); err != nil {
 		return Output{}, common.NormalizeError(err)
 	}
 

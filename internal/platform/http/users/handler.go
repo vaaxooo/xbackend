@@ -42,6 +42,10 @@ type Handler struct {
 	update         phttp.UseCaseHandler[usersapi.UpdateProfileInput, profile.Output]
 	changePassword phttp.UseCaseHandler[usersapi.ChangePasswordInput, struct{}]
 	link           phttp.UseCaseHandler[usersapi.LinkProviderInput, link.Output]
+
+	listSessions       phttp.UseCaseHandler[usersapi.ListSessionsInput, usersapi.SessionsOutput]
+	revokeSession      phttp.UseCaseHandler[usersapi.RevokeSessionInput, struct{}]
+	revokeOtherSession phttp.UseCaseHandler[usersapi.RevokeOtherSessionsInput, struct{}]
 }
 
 func NewHandler(svc usersapi.Service, middleware phttp.UseCaseMiddleware) *Handler {
@@ -103,6 +107,15 @@ func NewHandler(svc usersapi.Service, middleware phttp.UseCaseMiddleware) *Handl
 		}),
 		link: phttp.UseCaseFunc[usersapi.LinkProviderInput, link.Output](func(ctx context.Context, cmd usersapi.LinkProviderInput) (link.Output, error) {
 			return svc.LinkProvider(ctx, cmd)
+		}),
+		listSessions: phttp.UseCaseFunc[usersapi.ListSessionsInput, usersapi.SessionsOutput](func(ctx context.Context, cmd usersapi.ListSessionsInput) (usersapi.SessionsOutput, error) {
+			return svc.ListSessions(ctx, cmd)
+		}),
+		revokeSession: phttp.UseCaseFunc[usersapi.RevokeSessionInput, struct{}](func(ctx context.Context, cmd usersapi.RevokeSessionInput) (struct{}, error) {
+			return struct{}{}, svc.RevokeSession(ctx, cmd)
+		}),
+		revokeOtherSession: phttp.UseCaseFunc[usersapi.RevokeOtherSessionsInput, struct{}](func(ctx context.Context, cmd usersapi.RevokeOtherSessionsInput) (struct{}, error) {
+			return struct{}{}, svc.RevokeOtherSessions(ctx, cmd)
 		}),
 	}
 }
@@ -500,6 +513,102 @@ func (h *Handler) LinkProvider(w http.ResponseWriter, r *http.Request) {
 	phttp.WriteJSON(w, http.StatusOK, dto.LinkProviderResponse{
 		Linked: out.Linked,
 	})
+}
+
+func (h *Handler) ListSessions(w http.ResponseWriter, r *http.Request) {
+	uid, ok := httpctx.UserIDFromContext(r.Context())
+	if !ok {
+		phttp.WriteError(w, http.StatusUnauthorized, "unauthorized", "Unauthorized")
+		return
+	}
+
+	current := r.URL.Query().Get("current_refresh_token")
+	if current == "" {
+		current = r.Header.Get("X-Refresh-Token")
+	}
+
+	out, err := phttp.HandleUseCase(h.middleware, r, h.listSessions, usersapi.ListSessionsInput{
+		UserID:              uid,
+		CurrentRefreshToken: current,
+	})
+	if err != nil {
+		status, code, msg := mapError(err)
+		phttp.WriteError(w, status, code, msg)
+		return
+	}
+
+	resp := dto.SessionsResponse{Sessions: make([]dto.SessionResponse, 0, len(out.Sessions))}
+	for _, s := range out.Sessions {
+		resp.Sessions = append(resp.Sessions, dto.SessionResponse{
+			ID:        s.ID,
+			UserAgent: s.UserAgent,
+			IP:        s.IP,
+			CreatedAt: s.CreatedAt,
+			ExpiresAt: s.ExpiresAt,
+			RevokedAt: s.RevokedAt,
+			Current:   s.Current,
+		})
+	}
+
+	phttp.WriteJSON(w, http.StatusOK, resp)
+}
+
+func (h *Handler) RevokeSession(w http.ResponseWriter, r *http.Request) {
+	uid, ok := httpctx.UserIDFromContext(r.Context())
+	if !ok {
+		phttp.WriteError(w, http.StatusUnauthorized, "unauthorized", "Unauthorized")
+		return
+	}
+
+	var req dto.RevokeSessionRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		phttp.WriteError(w, http.StatusBadRequest, "invalid_json", "Invalid JSON")
+		return
+	}
+	if req.SessionID == "" {
+		phttp.WriteError(w, http.StatusBadRequest, "validation_error", "session_id is required")
+		return
+	}
+
+	if _, err := phttp.HandleUseCase(h.middleware, r, h.revokeSession, usersapi.RevokeSessionInput{UserID: uid, SessionID: req.SessionID}); err != nil {
+		status, code, msg := mapError(err)
+		phttp.WriteError(w, status, code, msg)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) RevokeOtherSessions(w http.ResponseWriter, r *http.Request) {
+	uid, ok := httpctx.UserIDFromContext(r.Context())
+	if !ok {
+		phttp.WriteError(w, http.StatusUnauthorized, "unauthorized", "Unauthorized")
+		return
+	}
+
+	var req dto.RevokeOtherSessionsRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		phttp.WriteError(w, http.StatusBadRequest, "invalid_json", "Invalid JSON")
+		return
+	}
+	if req.CurrentRefreshToken == "" {
+		req.CurrentRefreshToken = r.Header.Get("X-Refresh-Token")
+	}
+	if req.CurrentRefreshToken == "" {
+		phttp.WriteError(w, http.StatusBadRequest, "validation_error", "current_refresh_token is required")
+		return
+	}
+
+	if _, err := phttp.HandleUseCase(h.middleware, r, h.revokeOtherSession, usersapi.RevokeOtherSessionsInput{
+		UserID:              uid,
+		CurrentRefreshToken: req.CurrentRefreshToken,
+	}); err != nil {
+		status, code, msg := mapError(err)
+		phttp.WriteError(w, status, code, msg)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *Handler) SetupTwoFactor(w http.ResponseWriter, r *http.Request) {

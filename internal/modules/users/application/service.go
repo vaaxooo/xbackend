@@ -10,6 +10,7 @@ import (
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/profile"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/refresh"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/register"
+	"github.com/vaaxooo/xbackend/internal/modules/users/application/session"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/telegram"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/twofactor"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/verification"
@@ -36,4 +37,7 @@ type Service interface {
 	VerifyChallengeTOTP(ctx context.Context, in challenge.VerifyTOTPInput) (login.Output, error)
 	ResendChallengeEmail(ctx context.Context, in challenge.ResendEmailInput) (login.Output, error)
 	ConfirmChallengeEmail(ctx context.Context, in challenge.ConfirmEmailInput) (login.Output, error)
+	ListSessions(ctx context.Context, in session.ListInput) (session.Output, error)
+	RevokeSession(ctx context.Context, in session.RevokeInput) error
+	RevokeOtherSessions(ctx context.Context, in session.RevokeOthersInput) error
 }

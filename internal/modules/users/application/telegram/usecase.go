@@ -165,7 +165,7 @@ func (uc *UseCase) issueTokens(ctx context.Context, user domain.User) (login.Out
 	}
 	refreshHash := common.HashToken(refreshRaw)
 	now := time.Now().UTC()
-	if err := uc.refresh.Create(ctx, domain.NewRefreshTokenRecord(user.ID, refreshHash, now, uc.refreshTTL)); err != nil {
+	if err := uc.refresh.Create(ctx, common.NewRefreshRecord(ctx, user.ID, refreshHash, now, uc.refreshTTL)); err != nil {
 		return login.Output{}, common.NormalizeError(err)
 	}
 

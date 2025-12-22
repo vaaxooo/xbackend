@@ -101,7 +101,7 @@ func (uc *UseCase) Execute(ctx context.Context, in Input) (login.Output, error) 
 			return login.Output{}, common.NormalizeError(err)
 		}
 		refreshHash := common.HashToken(refreshRaw)
-		refreshRecord = domain.NewRefreshTokenRecord(userID, refreshHash, now, uc.refreshTTL)
+		refreshRecord = common.NewRefreshRecord(ctx, userID, refreshHash, now, uc.refreshTTL)
 	}
 
 	event := events.UserRegistered{

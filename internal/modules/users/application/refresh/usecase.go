@@ -67,7 +67,7 @@ func (uc *UseCase) Execute(ctx context.Context, in Input) (Output, error) {
 	if err := uc.refreshRepo.Revoke(ctx, stored.ID); err != nil {
 		return Output{}, common.NormalizeError(err)
 	}
-	if err := uc.refreshRepo.Create(ctx, domain.NewRefreshTokenRecord(stored.UserID, newHash, now, uc.refreshTTL)); err != nil {
+	if err := uc.refreshRepo.Create(ctx, common.NewRefreshRecord(ctx, stored.UserID, newHash, now, uc.refreshTTL)); err != nil {
 		return Output{}, common.NormalizeError(err)
 	}
 

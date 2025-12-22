@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -14,12 +15,13 @@ func Load() (*Config, error) {
 			Env:  getEnv("APP_ENV", "dev"),
 		},
 		HTTP: HTTPConfig{
-			Addr:              getEnv("HTTP_ADDR", ":8080"),
-			ReadTimeout:       getDuration("HTTP_READ_TIMEOUT", 5*time.Second),
-			ReadHeaderTimeout: getDuration("HTTP_READ_HEADER_TIMEOUT", 5*time.Second),
-			WriteTimeout:      getDuration("HTTP_WRITE_TIMEOUT", 10*time.Second),
-			IdleTimeout:       getDuration("HTTP_IDLE_TIMEOUT", 60*time.Second),
-			MaxHeaderBytes:    getInt("HTTP_MAX_HEADER_BYTES", 0),
+			Addr:               getEnv("HTTP_ADDR", ":8080"),
+			ReadTimeout:        getDuration("HTTP_READ_TIMEOUT", 5*time.Second),
+			ReadHeaderTimeout:  getDuration("HTTP_READ_HEADER_TIMEOUT", 5*time.Second),
+			WriteTimeout:       getDuration("HTTP_WRITE_TIMEOUT", 10*time.Second),
+			IdleTimeout:        getDuration("HTTP_IDLE_TIMEOUT", 60*time.Second),
+			MaxHeaderBytes:     getInt("HTTP_MAX_HEADER_BYTES", 0),
+			CORSAllowedOrigins: getStringSlice("CORS_ALLOWED_ORIGINS"),
 		},
 		DB: DBConfig{
 			Driver:          getEnv("DB_DRIVER", "postgres"),
@@ -100,4 +102,20 @@ func getBool(key string, def bool) bool {
 		return def
 	}
 	return parsed
+}
+
+func getStringSlice(key string) []string {
+	raw := os.Getenv(key)
+	if raw == "" {
+		return nil
+	}
+	parts := strings.Split(raw, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		trimmed := strings.TrimSpace(p)
+		if trimmed != "" {
+			out = append(out, trimmed)
+		}
+	}
+	return out
 }

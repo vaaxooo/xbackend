@@ -14,6 +14,7 @@ import (
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/profile"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/refresh"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/register"
+	"github.com/vaaxooo/xbackend/internal/modules/users/application/session"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/telegram"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/twofactor"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/verification"
@@ -124,6 +125,16 @@ func Init(deps Dependencies, cfg public.Config) (*Module, error) {
 	profileUC := common.NewTransactionalUseCase(uow, profile.NewUpdate(usersRepo))
 	changePasswordUC := common.NewTransactionalUseCase(uow, password.NewChange(identityRepo, hasher))
 	linkUC := link.New(identityRepo)
+	sessionsUC := session.New(refreshRepo)
+	sessionsListUC := common.NewTransactionalUseCase(uow, funcUseCase[session.ListInput, session.Output]{
+		fn: sessionsUC.List,
+	})
+	sessionsRevokeUC := common.NewTransactionalUseCase(uow, funcUseCase[session.RevokeInput, struct{}]{
+		fn: sessionsUC.Revoke,
+	})
+	sessionsPurgeUC := common.NewTransactionalUseCase(uow, funcUseCase[session.RevokeOthersInput, struct{}]{
+		fn: sessionsUC.RevokeOthers,
+	})
 
 	svc := usersapp.NewService(
 		common.UseCaseHandler(registerUC),
@@ -145,6 +156,9 @@ func Init(deps Dependencies, cfg public.Config) (*Module, error) {
 		common.UseCaseHandler(profileUC),
 		common.UseCaseHandler(changePasswordUC),
 		common.UseCaseHandler(linkUC),
+		common.UseCaseHandler(sessionsListUC),
+		common.UseCaseHandler(sessionsRevokeUC),
+		common.UseCaseHandler(sessionsPurgeUC),
 	)
 
 	return &Module{
