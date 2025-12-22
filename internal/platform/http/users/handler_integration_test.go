@@ -22,6 +22,7 @@ import (
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/profile"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/refresh"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/register"
+	"github.com/vaaxooo/xbackend/internal/modules/users/application/session"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/telegram"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/twofactor"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/verification"
@@ -69,6 +70,11 @@ type fakeService struct {
 	twoFactorSetupErr error
 	twoFactorConfirm  error
 	twoFactorDisable  error
+
+	listSessionsOut  session.Output
+	listSessionsErr  error
+	revokeSessionErr error
+	revokeOthersErr  error
 
 	getOut profile.Output
 	getErr error
@@ -145,6 +151,18 @@ func (f *fakeService) ResendChallengeEmail(context.Context, challenge.ResendEmai
 
 func (f *fakeService) ConfirmChallengeEmail(context.Context, challenge.ConfirmEmailInput) (login.Output, error) {
 	return f.challengeOut, f.challengeErr
+}
+
+func (f *fakeService) ListSessions(context.Context, session.ListInput) (session.Output, error) {
+	return f.listSessionsOut, f.listSessionsErr
+}
+
+func (f *fakeService) RevokeSession(context.Context, session.RevokeInput) error {
+	return f.revokeSessionErr
+}
+
+func (f *fakeService) RevokeOtherSessions(context.Context, session.RevokeOthersInput) error {
+	return f.revokeOthersErr
 }
 
 type fakeTokenParser struct {

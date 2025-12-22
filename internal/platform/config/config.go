@@ -17,12 +17,13 @@ type AppConfig struct {
 }
 
 type HTTPConfig struct {
-	Addr              string // ":8080"
-	ReadTimeout       time.Duration
-	ReadHeaderTimeout time.Duration
-	WriteTimeout      time.Duration
-	IdleTimeout       time.Duration
-	MaxHeaderBytes    int
+	Addr               string // ":8080"
+	ReadTimeout        time.Duration
+	ReadHeaderTimeout  time.Duration
+	WriteTimeout       time.Duration
+	IdleTimeout        time.Duration
+	MaxHeaderBytes     int
+	CORSAllowedOrigins []string
 }
 
 type DBConfig struct {

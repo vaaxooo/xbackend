@@ -11,6 +11,7 @@ import (
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/profile"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/refresh"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/register"
+	"github.com/vaaxooo/xbackend/internal/modules/users/application/session"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/telegram"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/twofactor"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/verification"
@@ -37,6 +38,10 @@ type service struct {
 	profileUC  common.Handler[profile.UpdateInput, profile.Output]
 	passwordUC common.Handler[password.ChangeInput, struct{}]
 	linkUC     common.Handler[link.Input, link.Output]
+
+	sessionsListUC  common.Handler[session.ListInput, session.Output]
+	sessionRevokeUC common.Handler[session.RevokeInput, struct{}]
+	sessionsPurgeUC common.Handler[session.RevokeOthersInput, struct{}]
 }
 
 func NewService(
@@ -59,6 +64,9 @@ func NewService(
 	profileUC common.Handler[profile.UpdateInput, profile.Output],
 	passwordUC common.Handler[password.ChangeInput, struct{}],
 	linkUC common.Handler[link.Input, link.Output],
+	sessionsListUC common.Handler[session.ListInput, session.Output],
+	sessionRevokeUC common.Handler[session.RevokeInput, struct{}],
+	sessionsPurgeUC common.Handler[session.RevokeOthersInput, struct{}],
 ) Service {
 	return &service{
 		registerUC:             registerUC,
@@ -80,6 +88,9 @@ func NewService(
 		profileUC:              profileUC,
 		passwordUC:             passwordUC,
 		linkUC:                 linkUC,
+		sessionsListUC:         sessionsListUC,
+		sessionRevokeUC:        sessionRevokeUC,
+		sessionsPurgeUC:        sessionsPurgeUC,
 	}
 }
 
@@ -163,4 +174,18 @@ func (s *service) ChangePassword(ctx context.Context, in password.ChangeInput) e
 
 func (s *service) LinkProvider(ctx context.Context, in link.Input) (link.Output, error) {
 	return s.linkUC.Handle(ctx, in)
+}
+
+func (s *service) ListSessions(ctx context.Context, in session.ListInput) (session.Output, error) {
+	return s.sessionsListUC.Handle(ctx, in)
+}
+
+func (s *service) RevokeSession(ctx context.Context, in session.RevokeInput) error {
+	_, err := s.sessionRevokeUC.Handle(ctx, in)
+	return err
+}
+
+func (s *service) RevokeOtherSessions(ctx context.Context, in session.RevokeOthersInput) error {
+	_, err := s.sessionsPurgeUC.Handle(ctx, in)
+	return err
 }

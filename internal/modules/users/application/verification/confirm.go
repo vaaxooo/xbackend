@@ -101,7 +101,7 @@ func (uc *ConfirmEmailUseCase) Execute(ctx context.Context, in ConfirmEmailInput
 		return login.Output{}, common.NormalizeError(err)
 	}
 	refreshHash := common.HashToken(refreshRaw)
-	refreshRecord := domain.NewRefreshTokenRecord(user.ID, refreshHash, usedAt, uc.refreshTTL)
+	refreshRecord := common.NewRefreshRecord(ctx, user.ID, refreshHash, usedAt, uc.refreshTTL)
 	if err := uc.refresh.Create(ctx, refreshRecord); err != nil {
 		return login.Output{}, common.NormalizeError(err)
 	}
