@@ -6,6 +6,8 @@ import (
 	"errors"
 	"time"
 
+	"github.com/lib/pq"
+
 	"github.com/vaaxooo/xbackend/internal/modules/users/domain"
 	pdb "github.com/vaaxooo/xbackend/internal/platform/db"
 )
@@ -52,31 +54,14 @@ func (r *RefreshRepo) GetByHash(ctx context.Context, tokenHash string) (domain.R
         WHERE token_hash = $1
         LIMIT 1
     `
-	var t domain.RefreshToken
-	var revokedAt sql.NullTime
-	var userID string
-
-	err := pdb.Executor(ctx, r.db).QueryRowContext(ctx, q, tokenHash).Scan(
-		&t.ID,
-		&userID,
-		&t.TokenHash,
-		&t.ExpiresAt,
-		&revokedAt,
-		&t.CreatedAt,
-		&t.UserAgent,
-		&t.IP,
-	)
+	row := pdb.Executor(ctx, r.db).QueryRowContext(ctx, q, tokenHash)
+	t, err := scanRefreshToken(row)
 	if errors.Is(err, sql.ErrNoRows) {
 		return domain.RefreshToken{}, false, nil
 	}
 	if err != nil {
 		return domain.RefreshToken{}, false, err
 	}
-	if revokedAt.Valid {
-		v := revokedAt.Time
-		t.RevokedAt = &v
-	}
-	t.UserID = domain.UserID(userID)
 	return t, true, nil
 }
 
@@ -89,4 +74,111 @@ func (r *RefreshRepo) Revoke(ctx context.Context, tokenID string) error {
     `
 	_, err := pdb.Executor(ctx, r.db).ExecContext(ctx, q, tokenID, now)
 	return err
+}
+
+func (r *RefreshRepo) GetByID(ctx context.Context, tokenID string) (domain.RefreshToken, bool, error) {
+	const q = `
+        SELECT
+            id::text,
+            user_id::text,
+            token_hash,
+            expires_at,
+            revoked_at,
+            created_at,
+            COALESCE(user_agent, ''),
+            COALESCE(ip, '')
+        FROM auth_refresh_tokens
+        WHERE id = $1::uuid
+        LIMIT 1
+    `
+	row := pdb.Executor(ctx, r.db).QueryRowContext(ctx, q, tokenID)
+	t, err := scanRefreshToken(row)
+	if errors.Is(err, sql.ErrNoRows) {
+		return domain.RefreshToken{}, false, nil
+	}
+	if err != nil {
+		return domain.RefreshToken{}, false, err
+	}
+	return t, true, nil
+}
+
+func (r *RefreshRepo) ListByUser(ctx context.Context, userID domain.UserID) ([]domain.RefreshToken, error) {
+	const q = `
+        SELECT
+            id::text,
+            user_id::text,
+            token_hash,
+            expires_at,
+            revoked_at,
+            created_at,
+            COALESCE(user_agent, ''),
+            COALESCE(ip, '')
+        FROM auth_refresh_tokens
+        WHERE user_id = $1::uuid
+        ORDER BY created_at DESC
+    `
+	rows, err := pdb.Executor(ctx, r.db).QueryContext(ctx, q, userID.String())
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	tokens := make([]domain.RefreshToken, 0)
+	for rows.Next() {
+		t, scanErr := scanRefreshToken(rows)
+		if scanErr != nil {
+			return nil, scanErr
+		}
+		tokens = append(tokens, t)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return tokens, nil
+}
+
+func (r *RefreshRepo) RevokeAllExcept(ctx context.Context, userID domain.UserID, keepIDs []string) error {
+	ids := keepIDs
+	if ids == nil {
+		ids = []string{}
+	}
+
+	now := time.Now().UTC()
+	const q = `
+        UPDATE auth_refresh_tokens
+        SET revoked_at = $3
+        WHERE user_id = $1::uuid AND revoked_at IS NULL AND id <> ALL($2::uuid[])
+    `
+	_, err := pdb.Executor(ctx, r.db).ExecContext(ctx, q, userID.String(), pq.Array(ids), now)
+	return err
+}
+
+type refreshScanner interface {
+	Scan(dest ...any) error
+}
+
+func scanRefreshToken(scanner refreshScanner) (domain.RefreshToken, error) {
+	var t domain.RefreshToken
+	var revokedAt sql.NullTime
+	var userID string
+
+	err := scanner.Scan(
+		&t.ID,
+		&userID,
+		&t.TokenHash,
+		&t.ExpiresAt,
+		&revokedAt,
+		&t.CreatedAt,
+		&t.UserAgent,
+		&t.IP,
+	)
+	if err != nil {
+		return domain.RefreshToken{}, err
+	}
+	if revokedAt.Valid {
+		v := revokedAt.Time
+		t.RevokedAt = &v
+	}
+	t.UserID = domain.UserID(userID)
+	return t, nil
 }

@@ -54,20 +54,20 @@ func (uc *UseCase) Execute(ctx context.Context, in Input) (Output, error) {
 		return Output{}, domain.ErrRefreshTokenInvalid
 	}
 
-	accessToken, err := uc.access.Issue(stored.UserID.String(), uc.accessTTL)
-	if err != nil {
-		return Output{}, common.NormalizeError(err)
-	}
-
 	newRefresh, err := common.NewRefreshToken()
 	if err != nil {
 		return Output{}, common.NormalizeError(err)
 	}
 	newHash := common.HashToken(newRefresh)
+	refreshRecord := common.NewRefreshRecord(ctx, stored.UserID, newHash, now, uc.refreshTTL)
+	accessToken, err := uc.access.Issue(stored.UserID.String(), refreshRecord.ID, uc.accessTTL)
+	if err != nil {
+		return Output{}, common.NormalizeError(err)
+	}
 	if err := uc.refreshRepo.Revoke(ctx, stored.ID); err != nil {
 		return Output{}, common.NormalizeError(err)
 	}
-	if err := uc.refreshRepo.Create(ctx, domain.NewRefreshTokenRecord(stored.UserID, newHash, now, uc.refreshTTL)); err != nil {
+	if err := uc.refreshRepo.Create(ctx, refreshRecord); err != nil {
 		return Output{}, common.NormalizeError(err)
 	}
 

@@ -19,9 +19,12 @@ type IdentityRepository interface {
 }
 
 type RefreshTokenRepository interface {
-	Create(ctx context.Context, t RefreshToken) error
-	GetByHash(ctx context.Context, tokenHash string) (RefreshToken, bool, error)
-	Revoke(ctx context.Context, tokenID string) error
+        Create(ctx context.Context, t RefreshToken) error
+        GetByHash(ctx context.Context, tokenHash string) (RefreshToken, bool, error)
+        GetByID(ctx context.Context, tokenID string) (RefreshToken, bool, error)
+        ListByUser(ctx context.Context, userID UserID) ([]RefreshToken, error)
+        Revoke(ctx context.Context, tokenID string) error
+        RevokeAllExcept(ctx context.Context, userID UserID, keepIDs []string) error
 }
 
 type VerificationTokenRepository interface {

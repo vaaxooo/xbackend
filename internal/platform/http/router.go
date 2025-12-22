@@ -12,8 +12,9 @@ import (
 )
 
 type RouterDeps struct {
-	Logger  plog.Logger
-	Timeout time.Duration
+	Logger             plog.Logger
+	Timeout            time.Duration
+	CORSAllowedOrigins []string
 }
 
 func NewRouter(deps RouterDeps, registerAPIV1 func(r chi.Router)) http.Handler {
@@ -25,6 +26,10 @@ func NewRouter(deps RouterDeps, registerAPIV1 func(r chi.Router)) http.Handler {
 	r.Use(middleware.Recoverer)
 	r.Use(middlewares.BodyLimit(1 << 20))
 	r.Use(middleware.Timeout(deps.Timeout))
+
+	if len(deps.CORSAllowedOrigins) > 0 {
+		r.Use(middlewares.CORS(deps.CORSAllowedOrigins))
+	}
 
 	// access log
 	r.Use(middlewares.AccessLog(deps.Logger))

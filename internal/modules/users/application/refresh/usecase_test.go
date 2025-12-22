@@ -34,14 +34,29 @@ func (m *refreshRepoMock) GetByHash(_ context.Context, hash string) (domain.Refr
 	return m.stored, m.found, m.err
 }
 
+func (m *refreshRepoMock) GetByID(_ context.Context, id string) (domain.RefreshToken, bool, error) {
+	if m.stored.ID == id {
+		return m.stored, true, m.err
+	}
+	return domain.RefreshToken{}, false, m.err
+}
+
+func (m *refreshRepoMock) ListByUser(context.Context, domain.UserID) ([]domain.RefreshToken, error) {
+	return []domain.RefreshToken{m.stored}, m.err
+}
+
 func (m *refreshRepoMock) Revoke(_ context.Context, id string) error {
 	m.revoked = id
 	return m.err
 }
 
+func (m *refreshRepoMock) RevokeAllExcept(context.Context, domain.UserID, []string) error {
+	return m.err
+}
+
 type refreshIssuerMock struct{ token string }
 
-func (m *refreshIssuerMock) Issue(_ string, _ time.Duration) (string, error) { return m.token, nil }
+func (m *refreshIssuerMock) Issue(_, _ string, _ time.Duration) (string, error) { return m.token, nil }
 
 func TestRefreshSuccess(t *testing.T) {
 	now := time.Now().UTC()

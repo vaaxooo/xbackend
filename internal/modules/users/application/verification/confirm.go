@@ -91,17 +91,16 @@ func (uc *ConfirmEmailUseCase) Execute(ctx context.Context, in ConfirmEmailInput
 		return login.Output{}, domain.ErrInvalidCredentials
 	}
 
-	accessToken, err := uc.access.Issue(user.ID.String(), uc.accessTTL)
-	if err != nil {
-		return login.Output{}, common.NormalizeError(err)
-	}
-
 	refreshRaw, err := common.NewRefreshToken()
 	if err != nil {
 		return login.Output{}, common.NormalizeError(err)
 	}
 	refreshHash := common.HashToken(refreshRaw)
-	refreshRecord := domain.NewRefreshTokenRecord(user.ID, refreshHash, usedAt, uc.refreshTTL)
+	refreshRecord := common.NewRefreshRecord(ctx, user.ID, refreshHash, usedAt, uc.refreshTTL)
+	accessToken, err := uc.access.Issue(user.ID.String(), refreshRecord.ID, uc.accessTTL)
+	if err != nil {
+		return login.Output{}, common.NormalizeError(err)
+	}
 	if err := uc.refresh.Create(ctx, refreshRecord); err != nil {
 		return login.Output{}, common.NormalizeError(err)
 	}

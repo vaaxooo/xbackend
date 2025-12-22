@@ -11,6 +11,7 @@ import (
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/profile"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/refresh"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/register"
+	"github.com/vaaxooo/xbackend/internal/modules/users/application/session"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/telegram"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/twofactor"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/verification"
@@ -42,13 +43,14 @@ type TelegramConfig struct {
 }
 
 type AuthPort interface {
-	Issue(userID string, ttl time.Duration) (string, error)
+	Issue(userID, sessionID string, ttl time.Duration) (string, error)
 	Verify(token string) (AuthContext, error)
 }
 
 type AuthContext struct {
-	UserID string
-	Roles  []string
+	UserID    string
+	SessionID string
+	Roles     []string
 }
 
 // Re-export DTOs and commands used by transports.
@@ -72,6 +74,10 @@ type ChangePasswordInput = password.ChangeInput
 type ProfileOutput = profile.Output
 type LinkProviderInput = link.Input
 type LinkProviderOutput = link.Output
+type ListSessionsInput = session.ListInput
+type SessionsOutput = session.Output
+type RevokeSessionInput = session.RevokeInput
+type RevokeOtherSessionsInput = session.RevokeOthersInput
 type ChallengeStatusInput = challenge.StatusInput
 type ChallengeVerifyTOTPInput = challenge.VerifyTOTPInput
 type ChallengeResendEmailInput = challenge.ResendEmailInput

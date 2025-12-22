@@ -50,13 +50,14 @@ func NewContainer(deps Deps) (*Container, error) {
 	}
 
 	// Build HTTP router with versioned API registrations.
-	handler := phttp.NewRouter(
-		phttp.RouterDeps{
-			Logger:  deps.Logger,
-			Timeout: 30 * time.Second,
-		},
-		func(r chi.Router) { RegisterAPIV1(r, mods) },
-	)
+        handler := phttp.NewRouter(
+                phttp.RouterDeps{
+                        Logger:            deps.Logger,
+                        Timeout:           30 * time.Second,
+                        CORSAllowedOrigins: deps.Config.HTTP.CORSAllowedOrigins,
+                },
+                func(r chi.Router) { RegisterAPIV1(r, mods) },
+        )
 
 	server := phttp.NewServer(
 		phttp.ServerConfig{

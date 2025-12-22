@@ -35,6 +35,9 @@ func RegisterV1(r chi.Router, svc public.Service, auth public.AuthPort) {
 			r.Post("/2fa/setup", h.SetupTwoFactor)
 			r.Post("/2fa/confirm", h.ConfirmTwoFactor)
 			r.Post("/2fa/disable", h.DisableTwoFactor)
+			r.Get("/sessions", h.ListSessions)
+			r.Post("/sessions/revoke", h.RevokeSession)
+			r.Post("/sessions/revoke-others", h.RevokeOtherSessions)
 		})
 	})
 

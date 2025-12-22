@@ -19,15 +19,17 @@ func NewHS256(secret string) (*HS256, error) {
 }
 
 type Claims struct {
-	UserID string `json:"uid"`
+	UserID    string `json:"uid"`
+	SessionID string `json:"sid"`
 	jwt.RegisteredClaims
 }
 
-func (c *HS256) Issue(userID string, ttl time.Duration) (string, error) {
+func (c *HS256) Issue(userID, sessionID string, ttl time.Duration) (string, error) {
 	now := time.Now().UTC()
 
 	claims := Claims{
-		UserID: userID,
+		UserID:    userID,
+		SessionID: sessionID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			IssuedAt:  jwt.NewNumericDate(now),
 			ExpiresAt: jwt.NewNumericDate(now.Add(ttl)),
@@ -38,7 +40,7 @@ func (c *HS256) Issue(userID string, ttl time.Duration) (string, error) {
 	return t.SignedString(c.secret)
 }
 
-func (c *HS256) Parse(token string) (string, error) {
+func (c *HS256) Parse(token string) (Claims, error) {
 	parsed, err := jwt.ParseWithClaims(token, &Claims{}, func(t *jwt.Token) (any, error) {
 		if t.Method != jwt.SigningMethodHS256 {
 			return nil, errors.New("unexpected signing method")
@@ -46,16 +48,16 @@ func (c *HS256) Parse(token string) (string, error) {
 		return c.secret, nil
 	})
 	if err != nil {
-		return "", err
+		return Claims{}, err
 	}
 
 	claims, ok := parsed.Claims.(*Claims)
 	if !ok || !parsed.Valid {
-		return "", errors.New("invalid token")
+		return Claims{}, errors.New("invalid token")
 	}
-	if claims.UserID == "" {
-		return "", errors.New("missing uid")
+	if claims.UserID == "" || claims.SessionID == "" {
+		return Claims{}, errors.New("missing uid or sid")
 	}
 
-	return claims.UserID, nil
+	return *claims, nil
 }

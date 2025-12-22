@@ -26,6 +26,7 @@ func RequireJWT(auth public.AuthPort) func(http.Handler) http.Handler {
 			}
 
 			reqCtx := httpctx.WithUserID(r.Context(), ctx.UserID)
+			reqCtx = httpctx.WithSessionID(reqCtx, ctx.SessionID)
 			next.ServeHTTP(w, r.WithContext(reqCtx))
 		})
 	}
