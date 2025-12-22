@@ -108,7 +108,7 @@ func (stubHasher) Compare(context.Context, string, string) error { return nil }
 
 type stubTokenIssuer struct{}
 
-func (stubTokenIssuer) Issue(string, time.Duration) (string, error) { return "token", nil }
+func (stubTokenIssuer) Issue(string, string, time.Duration) (string, error) { return "token", nil }
 
 type stubEventPublisher struct {
 	called bool

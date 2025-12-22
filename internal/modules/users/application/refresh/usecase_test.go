@@ -56,7 +56,7 @@ func (m *refreshRepoMock) RevokeAllExcept(context.Context, domain.UserID, []stri
 
 type refreshIssuerMock struct{ token string }
 
-func (m *refreshIssuerMock) Issue(_ string, _ time.Duration) (string, error) { return m.token, nil }
+func (m *refreshIssuerMock) Issue(_, _ string, _ time.Duration) (string, error) { return m.token, nil }
 
 func TestRefreshSuccess(t *testing.T) {
 	now := time.Now().UTC()

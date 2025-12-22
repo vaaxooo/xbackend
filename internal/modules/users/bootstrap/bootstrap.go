@@ -56,7 +56,7 @@ func Init(deps Dependencies, cfg public.Config) (*Module, error) {
 
 	hasher := userscrypto.NewBcryptHasher(0)
 
-	authPort, err := usersauth.NewJWTAuth(cfg.Auth.JWTSecret)
+    authPort, err := usersauth.NewJWTAuth(cfg.Auth.JWTSecret, refreshRepo)
 	if err != nil {
 		return nil, err
 	}

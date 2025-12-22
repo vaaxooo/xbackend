@@ -148,11 +148,6 @@ func (uc *UseCase) Execute(ctx context.Context, in Input) (Output, error) {
 		}, nil
 	}
 
-	accessToken, err := uc.access.Issue(u.ID.String(), uc.accessTTL)
-	if err != nil {
-		return Output{}, common.NormalizeError(err)
-	}
-
 	refreshRaw, err := common.NewRefreshToken()
 	if err != nil {
 		return Output{}, common.NormalizeError(err)
@@ -160,7 +155,13 @@ func (uc *UseCase) Execute(ctx context.Context, in Input) (Output, error) {
 	refreshHash := common.HashToken(refreshRaw)
 
 	now = time.Now().UTC()
-	if err := uc.refresh.Create(ctx, common.NewRefreshRecord(ctx, u.ID, refreshHash, now, uc.refreshTTL)); err != nil {
+	refreshRecord := common.NewRefreshRecord(ctx, u.ID, refreshHash, now, uc.refreshTTL)
+	accessToken, err := uc.access.Issue(u.ID.String(), refreshRecord.ID, uc.accessTTL)
+	if err != nil {
+		return Output{}, common.NormalizeError(err)
+	}
+
+	if err := uc.refresh.Create(ctx, refreshRecord); err != nil {
 		return Output{}, common.NormalizeError(err)
 	}
 

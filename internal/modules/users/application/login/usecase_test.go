@@ -86,7 +86,7 @@ func (m *loginHasherMock) Compare(context.Context, string, string) error { retur
 
 type loginIssuerMock struct{ token string }
 
-func (m *loginIssuerMock) Issue(_ string, _ time.Duration) (string, error) { return m.token, nil }
+func (m *loginIssuerMock) Issue(_, _ string, _ time.Duration) (string, error) { return m.token, nil }
 
 type loginChallengeRepoMock struct {
 	created []domain.Challenge

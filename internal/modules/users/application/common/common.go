@@ -9,7 +9,7 @@ import (
 )
 
 type AccessTokenIssuer interface {
-	Issue(userID string, ttl time.Duration) (string, error)
+	Issue(userID, sessionID string, ttl time.Duration) (string, error)
 }
 
 func NewRefreshToken() (string, error) {

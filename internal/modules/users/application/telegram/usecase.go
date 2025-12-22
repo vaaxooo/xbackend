@@ -154,18 +154,19 @@ func (uc *UseCase) registerUser(ctx context.Context, payload telegramUser) (doma
 }
 
 func (uc *UseCase) issueTokens(ctx context.Context, user domain.User) (login.Output, error) {
-	accessToken, err := uc.access.Issue(user.ID.String(), uc.accessTTL)
-	if err != nil {
-		return login.Output{}, common.NormalizeError(err)
-	}
-
 	refreshRaw, err := common.NewRefreshToken()
 	if err != nil {
 		return login.Output{}, common.NormalizeError(err)
 	}
 	refreshHash := common.HashToken(refreshRaw)
 	now := time.Now().UTC()
-	if err := uc.refresh.Create(ctx, common.NewRefreshRecord(ctx, user.ID, refreshHash, now, uc.refreshTTL)); err != nil {
+	refreshRecord := common.NewRefreshRecord(ctx, user.ID, refreshHash, now, uc.refreshTTL)
+
+	accessToken, err := uc.access.Issue(user.ID.String(), refreshRecord.ID, uc.accessTTL)
+	if err != nil {
+		return login.Output{}, common.NormalizeError(err)
+	}
+	if err := uc.refresh.Create(ctx, refreshRecord); err != nil {
 		return login.Output{}, common.NormalizeError(err)
 	}
 

@@ -43,13 +43,14 @@ type TelegramConfig struct {
 }
 
 type AuthPort interface {
-	Issue(userID string, ttl time.Duration) (string, error)
+	Issue(userID, sessionID string, ttl time.Duration) (string, error)
 	Verify(token string) (AuthContext, error)
 }
 
 type AuthContext struct {
-	UserID string
-	Roles  []string
+	UserID    string
+	SessionID string
+	Roles     []string
 }
 
 // Re-export DTOs and commands used by transports.

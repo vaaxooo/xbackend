@@ -5,20 +5,24 @@ import (
 	"strings"
 )
 
+func normalizeOrigin(origin string) string {
+	return strings.TrimRight(strings.TrimSpace(origin), "/")
+}
+
 // CORS returns a middleware that applies permissive CORS headers for the
 // provided list of allowed origins. Requests with an Origin not in the list
 // pass through without CORS headers.
 func CORS(allowedOrigins []string) func(http.Handler) http.Handler {
 	allowed := make(map[string]struct{}, len(allowedOrigins))
 	for _, origin := range allowedOrigins {
-		if trimmed := strings.TrimSpace(origin); trimmed != "" {
+		if trimmed := normalizeOrigin(origin); trimmed != "" {
 			allowed[trimmed] = struct{}{}
 		}
 	}
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			origin := r.Header.Get("Origin")
+			origin := normalizeOrigin(r.Header.Get("Origin"))
 			if origin != "" {
 				if _, ok := allowed[origin]; ok {
 					w.Header().Set("Access-Control-Allow-Origin", origin)
