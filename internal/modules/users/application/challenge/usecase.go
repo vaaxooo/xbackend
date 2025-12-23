@@ -213,6 +213,9 @@ func (uc *UseCase) challengeResponse(ctx context.Context, challenge domain.Chall
 		Challenge:   info,
 	}
 	if challenge.Status == domain.ChallengeStatusCompleted {
+		if err := uc.consumeChallenge(ctx, challenge); err != nil {
+			return Output{}, err
+		}
 		accessToken, refreshToken, err := uc.issueTokens(ctx, user)
 		if err != nil {
 			return Output{}, err
@@ -222,6 +225,11 @@ func (uc *UseCase) challengeResponse(ctx context.Context, challenge domain.Chall
 		out.Status = string(domain.ChallengeStatusCompleted)
 	}
 	return out, nil
+}
+
+func (uc *UseCase) consumeChallenge(ctx context.Context, challenge domain.Challenge) error {
+	expired := challenge.WithStatus(domain.ChallengeStatusExpired, time.Now().UTC())
+	return common.NormalizeError(uc.challenges.Update(ctx, expired))
 }
 
 func (uc *UseCase) issueTokens(ctx context.Context, user domain.User) (string, string, error) {

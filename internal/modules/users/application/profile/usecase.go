@@ -8,19 +8,21 @@ import (
 )
 
 type GetUseCase struct {
-	users domain.UserRepository
+	users      domain.UserRepository
+	identities domain.IdentityRepository
 }
 
 type UpdateUseCase struct {
-	users domain.UserRepository
+	users      domain.UserRepository
+	identities domain.IdentityRepository
 }
 
-func NewGet(users domain.UserRepository) *GetUseCase {
-	return &GetUseCase{users: users}
+func NewGet(users domain.UserRepository, identities domain.IdentityRepository) *GetUseCase {
+	return &GetUseCase{users: users, identities: identities}
 }
 
-func NewUpdate(users domain.UserRepository) *UpdateUseCase {
-	return &UpdateUseCase{users: users}
+func NewUpdate(users domain.UserRepository, identities domain.IdentityRepository) *UpdateUseCase {
+	return &UpdateUseCase{users: users, identities: identities}
 }
 
 func (uc *GetUseCase) Execute(ctx context.Context, in GetInput) (Output, error) {
@@ -37,14 +39,20 @@ func (uc *GetUseCase) Execute(ctx context.Context, in GetInput) (Output, error) 
 		return Output{}, domain.ErrUnauthorized
 	}
 
+	settings, err := loginSettings(ctx, uc.identities, u.ID)
+	if err != nil {
+		return Output{}, err
+	}
+
 	return Output{
-		UserID:      u.ID.String(),
-		Email:       u.Email,
-		FirstName:   u.FirstName,
-		LastName:    u.LastName,
-		MiddleName:  u.MiddleName,
-		DisplayName: u.DisplayName,
-		AvatarURL:   u.AvatarURL,
+		UserID:        u.ID.String(),
+		Email:         u.Email,
+		FirstName:     u.FirstName,
+		LastName:      u.LastName,
+		MiddleName:    u.MiddleName,
+		DisplayName:   u.DisplayName,
+		AvatarURL:     u.AvatarURL,
+		LoginSettings: settings,
 	}, nil
 }
 
@@ -81,13 +89,34 @@ func (uc *UpdateUseCase) Execute(ctx context.Context, in UpdateInput) (Output, e
 		return Output{}, common.NormalizeError(err)
 	}
 
+	settings, err := loginSettings(ctx, uc.identities, u.ID)
+	if err != nil {
+		return Output{}, err
+	}
+
 	return Output{
-		UserID:      u.ID.String(),
-		Email:       u.Email,
-		FirstName:   u.FirstName,
-		LastName:    u.LastName,
-		MiddleName:  u.MiddleName,
-		DisplayName: u.DisplayName,
-		AvatarURL:   u.AvatarURL,
+		UserID:        u.ID.String(),
+		Email:         u.Email,
+		FirstName:     u.FirstName,
+		LastName:      u.LastName,
+		MiddleName:    u.MiddleName,
+		DisplayName:   u.DisplayName,
+		AvatarURL:     u.AvatarURL,
+		LoginSettings: settings,
+	}, nil
+}
+
+func loginSettings(ctx context.Context, repo domain.IdentityRepository, userID domain.UserID) (LoginSettings, error) {
+	ident, found, err := repo.GetByUserAndProvider(ctx, userID, "email")
+	if err != nil {
+		return LoginSettings{}, common.NormalizeError(err)
+	}
+	if !found {
+		return LoginSettings{}, domain.ErrUnauthorized
+	}
+
+	return LoginSettings{
+		TwoFactorEnabled: ident.IsTwoFactorEnabled(),
+		EmailVerified:    ident.IsEmailVerified(),
 	}, nil
 }

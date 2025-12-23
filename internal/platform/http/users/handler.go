@@ -253,6 +253,22 @@ func toChallengeDTO(info *login.ChallengeInfo, status string) *dto.ChallengeResp
 	}
 }
 
+func toProfileDTO(out profile.Output) dto.UserProfileResponse {
+	return dto.UserProfileResponse{
+		UserID:      out.UserID,
+		Email:       out.Email,
+		FirstName:   out.FirstName,
+		LastName:    out.LastName,
+		MiddleName:  out.MiddleName,
+		DisplayName: out.DisplayName,
+		AvatarURL:   out.AvatarURL,
+		LoginSettings: dto.LoginSettingsResponse{
+			TwoFactorEnabled: out.LoginSettings.TwoFactorEnabled,
+			EmailVerified:    out.LoginSettings.EmailVerified,
+		},
+	}
+}
+
 func writeAuthResponse(w http.ResponseWriter, out login.Output) {
 	if out.Status == "challenge_required" && out.Challenge != nil {
 		phttp.WriteJSON(w, http.StatusOK, toChallengeDTO(out.Challenge, out.Status))
@@ -421,15 +437,7 @@ func (h *Handler) GetMe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	phttp.WriteJSON(w, http.StatusOK, dto.UserProfileResponse{
-		UserID:      out.UserID,
-		Email:       out.Email,
-		FirstName:   out.FirstName,
-		LastName:    out.LastName,
-		MiddleName:  out.MiddleName,
-		DisplayName: out.DisplayName,
-		AvatarURL:   out.AvatarURL,
-	})
+	phttp.WriteJSON(w, http.StatusOK, toProfileDTO(out))
 }
 
 func (h *Handler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
@@ -459,15 +467,7 @@ func (h *Handler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	phttp.WriteJSON(w, http.StatusOK, dto.UserProfileResponse{
-		UserID:      out.UserID,
-		Email:       out.Email,
-		FirstName:   out.FirstName,
-		LastName:    out.LastName,
-		MiddleName:  out.MiddleName,
-		DisplayName: out.DisplayName,
-		AvatarURL:   out.AvatarURL,
-	})
+	phttp.WriteJSON(w, http.StatusOK, toProfileDTO(out))
 }
 
 func (h *Handler) ChangePassword(w http.ResponseWriter, r *http.Request) {
@@ -685,6 +685,9 @@ func mapError(err error) (status int, code string, message string) {
 	}
 	if errors.Is(err, domain.ErrTwoFactorRequired) || errors.Is(err, domain.ErrInvalidTwoFactor) {
 		return http.StatusUnauthorized, "two_factor_required", "Two-factor verification required"
+	}
+	if errors.Is(err, domain.ErrTwoFactorAlreadyEnabled) {
+		return http.StatusConflict, "two_factor_already_enabled", "Two-factor is already enabled"
 	}
 	if errors.Is(err, domain.ErrTooManyRequests) {
 		return http.StatusTooManyRequests, "too_many_requests", "Too many requests"
