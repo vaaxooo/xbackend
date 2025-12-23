@@ -4,7 +4,9 @@ import (
 	"time"
 
 	"github.com/vaaxooo/xbackend/internal/modules/users/application"
+	"github.com/vaaxooo/xbackend/internal/modules/users/application/apple"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/challenge"
+	"github.com/vaaxooo/xbackend/internal/modules/users/application/google"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/link"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/login"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/password"
@@ -22,6 +24,8 @@ type Service = application.Service
 type Config struct {
 	Auth     AuthConfig
 	Telegram TelegramConfig
+	Google   GoogleConfig
+	Apple    AppleConfig
 }
 
 type AuthConfig struct {
@@ -40,6 +44,16 @@ type AuthConfig struct {
 type TelegramConfig struct {
 	BotToken    string
 	InitDataTTL time.Duration
+}
+
+type GoogleConfig struct {
+	ClientID string
+	JWKSURL  string
+}
+
+type AppleConfig struct {
+	ClientID string
+	JWKSURL  string
 }
 
 type AuthPort interface {
@@ -68,6 +82,8 @@ type TwoFactorSetupOutput = twofactor.SetupOutput
 type TwoFactorConfirmInput = twofactor.ConfirmInput
 type TwoFactorDisableInput = twofactor.DisableInput
 type TelegramLoginInput = telegram.Input
+type GoogleLoginInput = google.Input
+type AppleLoginInput = apple.Input
 type GetProfileInput = profile.GetInput
 type UpdateProfileInput = profile.UpdateInput
 type ChangePasswordInput = password.ChangeInput

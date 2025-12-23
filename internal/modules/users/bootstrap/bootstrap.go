@@ -6,8 +6,10 @@ import (
 	"time"
 
 	usersapp "github.com/vaaxooo/xbackend/internal/modules/users/application"
+	"github.com/vaaxooo/xbackend/internal/modules/users/application/apple"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/challenge"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/common"
+	"github.com/vaaxooo/xbackend/internal/modules/users/application/google"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/link"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/login"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/password"
@@ -22,6 +24,7 @@ import (
 	usersauth "github.com/vaaxooo/xbackend/internal/modules/users/infrastructure/auth"
 	userscrypto "github.com/vaaxooo/xbackend/internal/modules/users/infrastructure/crypto"
 	usersevents "github.com/vaaxooo/xbackend/internal/modules/users/infrastructure/events"
+	"github.com/vaaxooo/xbackend/internal/modules/users/infrastructure/oauth"
 	"github.com/vaaxooo/xbackend/internal/modules/users/public"
 	pdb "github.com/vaaxooo/xbackend/internal/platform/db"
 	usersdb "github.com/vaaxooo/xbackend/internal/platform/db/users"
@@ -56,7 +59,7 @@ func Init(deps Dependencies, cfg public.Config) (*Module, error) {
 
 	hasher := userscrypto.NewBcryptHasher(0)
 
-    authPort, err := usersauth.NewJWTAuth(cfg.Auth.JWTSecret, refreshRepo)
+	authPort, err := usersauth.NewJWTAuth(cfg.Auth.JWTSecret, refreshRepo)
 	if err != nil {
 		return nil, err
 	}
@@ -83,6 +86,10 @@ func Init(deps Dependencies, cfg public.Config) (*Module, error) {
 			return requestVerification.RequestEmailConfirmation(ctx, verification.RequestEmailInput{Email: ident.ProviderUserID})
 		},
 	))
+	googleVerifier := oauth.NewIDTokenVerifier("", cfg.Google.ClientID, cfg.Google.JWKSURL)
+	googleUC := common.NewTransactionalUseCase(uow, google.New(usersRepo, identityRepo, refreshRepo, authPort, googleVerifier, cfg.Auth.AccessTTL, cfg.Auth.RefreshTTL))
+	appleVerifier := oauth.NewIDTokenVerifier("https://appleid.apple.com", cfg.Apple.ClientID, cfg.Apple.JWKSURL)
+	appleUC := common.NewTransactionalUseCase(uow, apple.New(usersRepo, identityRepo, refreshRepo, authPort, appleVerifier, cfg.Auth.AccessTTL, cfg.Auth.RefreshTTL))
 	telegramUC, err := telegram.New(usersRepo, identityRepo, refreshRepo, authPort, cfg.Telegram.BotToken, cfg.Auth.AccessTTL, cfg.Auth.RefreshTTL, cfg.Telegram.InitDataTTL)
 	if err != nil {
 		return nil, err
@@ -121,8 +128,8 @@ func Init(deps Dependencies, cfg public.Config) (*Module, error) {
 		fn: challengeUC.ConfirmEmail,
 	})
 
-	meUC := common.NewTransactionalUseCase(uow, profile.NewGet(usersRepo))
-	profileUC := common.NewTransactionalUseCase(uow, profile.NewUpdate(usersRepo))
+	meUC := common.NewTransactionalUseCase(uow, profile.NewGet(usersRepo, identityRepo))
+	profileUC := common.NewTransactionalUseCase(uow, profile.NewUpdate(usersRepo, identityRepo))
 	changePasswordUC := common.NewTransactionalUseCase(uow, password.NewChange(identityRepo, hasher))
 	linkUC := link.New(identityRepo)
 	sessionsUC := session.New(refreshRepo)
@@ -140,6 +147,8 @@ func Init(deps Dependencies, cfg public.Config) (*Module, error) {
 		common.UseCaseHandler(registerUC),
 		common.UseCaseHandler(loginUC),
 		common.UseCaseHandler(telegramTransactional),
+		common.UseCaseHandler(googleUC),
+		common.UseCaseHandler(appleUC),
 		common.UseCaseHandler(refreshUC),
 		common.UseCaseHandler(confirmEmailUC),
 		common.UseCaseHandler(emailVerificationUC),

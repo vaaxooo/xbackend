@@ -18,6 +18,10 @@ type TelegramLoginRequest struct {
 	InitData string `json:"init_data"`
 }
 
+type SocialIDTokenRequest struct {
+	IDToken string `json:"id_token"`
+}
+
 type RefreshRequest struct {
 	RefreshToken string `json:"refresh_token"`
 }
@@ -57,13 +61,19 @@ type TwoFactorCodeRequest struct {
 }
 
 type UserProfileResponse struct {
-	UserID      string `json:"user_id"`
-	Email       string `json:"email"`
-	FirstName   string `json:"first_name"`
-	LastName    string `json:"last_name"`
-	MiddleName  string `json:"middle_name"`
-	DisplayName string `json:"display_name"`
-	AvatarURL   string `json:"avatar_url"`
+	UserID        string                `json:"user_id"`
+	Email         string                `json:"email"`
+	FirstName     string                `json:"first_name"`
+	LastName      string                `json:"last_name"`
+	MiddleName    string                `json:"middle_name"`
+	DisplayName   string                `json:"display_name"`
+	AvatarURL     string                `json:"avatar_url"`
+	LoginSettings LoginSettingsResponse `json:"login_settings"`
+}
+
+type LoginSettingsResponse struct {
+	TwoFactorEnabled bool `json:"two_factor_enabled"`
+	EmailVerified    bool `json:"email_verified"`
 }
 
 type LoginResponse struct {

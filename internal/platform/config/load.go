@@ -43,6 +43,14 @@ func Load() (*Config, error) {
 			BotToken:    getEnv("TELEGRAM_BOT_TOKEN", ""),
 			InitDataTTL: getDuration("TELEGRAM_INIT_DATA_TTL", 24*time.Hour),
 		},
+		Google: GoogleConfig{
+			ClientID: getEnv("GOOGLE_CLIENT_ID", ""),
+			JWKSURL:  getEnv("GOOGLE_JWKS_URL", "https://www.googleapis.com/oauth2/v3/certs"),
+		},
+		Apple: AppleConfig{
+			ClientID: getEnv("APPLE_CLIENT_ID", ""),
+			JWKSURL:  getEnv("APPLE_JWKS_URL", "https://appleid.apple.com/auth/keys"),
+		},
 		SMTP: SMTPConfig{
 			Host:     getEnv("SMTP_HOST", ""),
 			Port:     getInt("SMTP_PORT", 587),

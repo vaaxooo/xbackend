@@ -25,6 +25,8 @@ type Handler struct {
 	register              phttp.UseCaseHandler[usersapi.RegisterInput, login.Output]
 	login                 phttp.UseCaseHandler[usersapi.LoginInput, login.Output]
 	telegram              phttp.UseCaseHandler[usersapi.TelegramLoginInput, login.Output]
+	google                phttp.UseCaseHandler[usersapi.GoogleLoginInput, login.Output]
+	apple                 phttp.UseCaseHandler[usersapi.AppleLoginInput, login.Output]
 	refresh               phttp.UseCaseHandler[usersapi.RefreshInput, refresh.Output]
 	confirmEmail          phttp.UseCaseHandler[usersapi.ConfirmEmailInput, login.Output]
 	requestConfirm        phttp.UseCaseHandler[usersapi.RequestEmailInput, struct{}]
@@ -59,6 +61,12 @@ func NewHandler(svc usersapi.Service, middleware phttp.UseCaseMiddleware) *Handl
 		}),
 		telegram: phttp.UseCaseFunc[usersapi.TelegramLoginInput, login.Output](func(ctx context.Context, cmd usersapi.TelegramLoginInput) (login.Output, error) {
 			return svc.LoginWithTelegram(ctx, cmd)
+		}),
+		google: phttp.UseCaseFunc[usersapi.GoogleLoginInput, login.Output](func(ctx context.Context, cmd usersapi.GoogleLoginInput) (login.Output, error) {
+			return svc.LoginWithGoogle(ctx, cmd)
+		}),
+		apple: phttp.UseCaseFunc[usersapi.AppleLoginInput, login.Output](func(ctx context.Context, cmd usersapi.AppleLoginInput) (login.Output, error) {
+			return svc.LoginWithApple(ctx, cmd)
 		}),
 		refresh: phttp.UseCaseFunc[usersapi.RefreshInput, refresh.Output](func(ctx context.Context, cmd usersapi.RefreshInput) (refresh.Output, error) {
 			return svc.Refresh(ctx, cmd)
@@ -253,6 +261,22 @@ func toChallengeDTO(info *login.ChallengeInfo, status string) *dto.ChallengeResp
 	}
 }
 
+func toProfileDTO(out profile.Output) dto.UserProfileResponse {
+	return dto.UserProfileResponse{
+		UserID:      out.UserID,
+		Email:       out.Email,
+		FirstName:   out.FirstName,
+		LastName:    out.LastName,
+		MiddleName:  out.MiddleName,
+		DisplayName: out.DisplayName,
+		AvatarURL:   out.AvatarURL,
+		LoginSettings: dto.LoginSettingsResponse{
+			TwoFactorEnabled: out.LoginSettings.TwoFactorEnabled,
+			EmailVerified:    out.LoginSettings.EmailVerified,
+		},
+	}
+}
+
 func writeAuthResponse(w http.ResponseWriter, out login.Output) {
 	if out.Status == "challenge_required" && out.Challenge != nil {
 		phttp.WriteJSON(w, http.StatusOK, toChallengeDTO(out.Challenge, out.Status))
@@ -308,6 +332,38 @@ func (h *Handler) TelegramLogin(w http.ResponseWriter, r *http.Request) {
 			RefreshToken: out.RefreshToken,
 		},
 	})
+}
+
+func (h *Handler) GoogleLogin(w http.ResponseWriter, r *http.Request) {
+	var req dto.SocialIDTokenRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		phttp.WriteError(w, http.StatusBadRequest, "invalid_json", "Invalid JSON")
+		return
+	}
+
+	out, err := phttp.HandleUseCase(h.middleware, r, h.google, usersapi.GoogleLoginInput{IDToken: req.IDToken})
+	if err != nil {
+		status, code, msg := mapError(err)
+		phttp.WriteError(w, status, code, msg)
+		return
+	}
+	writeAuthResponse(w, out)
+}
+
+func (h *Handler) AppleLogin(w http.ResponseWriter, r *http.Request) {
+	var req dto.SocialIDTokenRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		phttp.WriteError(w, http.StatusBadRequest, "invalid_json", "Invalid JSON")
+		return
+	}
+
+	out, err := phttp.HandleUseCase(h.middleware, r, h.apple, usersapi.AppleLoginInput{IDToken: req.IDToken})
+	if err != nil {
+		status, code, msg := mapError(err)
+		phttp.WriteError(w, status, code, msg)
+		return
+	}
+	writeAuthResponse(w, out)
 }
 
 func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
@@ -421,15 +477,7 @@ func (h *Handler) GetMe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	phttp.WriteJSON(w, http.StatusOK, dto.UserProfileResponse{
-		UserID:      out.UserID,
-		Email:       out.Email,
-		FirstName:   out.FirstName,
-		LastName:    out.LastName,
-		MiddleName:  out.MiddleName,
-		DisplayName: out.DisplayName,
-		AvatarURL:   out.AvatarURL,
-	})
+	phttp.WriteJSON(w, http.StatusOK, toProfileDTO(out))
 }
 
 func (h *Handler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
@@ -459,15 +507,7 @@ func (h *Handler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	phttp.WriteJSON(w, http.StatusOK, dto.UserProfileResponse{
-		UserID:      out.UserID,
-		Email:       out.Email,
-		FirstName:   out.FirstName,
-		LastName:    out.LastName,
-		MiddleName:  out.MiddleName,
-		DisplayName: out.DisplayName,
-		AvatarURL:   out.AvatarURL,
-	})
+	phttp.WriteJSON(w, http.StatusOK, toProfileDTO(out))
 }
 
 func (h *Handler) ChangePassword(w http.ResponseWriter, r *http.Request) {
@@ -685,6 +725,9 @@ func mapError(err error) (status int, code string, message string) {
 	}
 	if errors.Is(err, domain.ErrTwoFactorRequired) || errors.Is(err, domain.ErrInvalidTwoFactor) {
 		return http.StatusUnauthorized, "two_factor_required", "Two-factor verification required"
+	}
+	if errors.Is(err, domain.ErrTwoFactorAlreadyEnabled) {
+		return http.StatusConflict, "two_factor_already_enabled", "Two-factor is already enabled"
 	}
 	if errors.Is(err, domain.ErrTooManyRequests) {
 		return http.StatusTooManyRequests, "too_many_requests", "Too many requests"

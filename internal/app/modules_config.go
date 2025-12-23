@@ -22,5 +22,13 @@ func UsersConfig(cfg *pconfig.Config) userspublic.Config {
 			BotToken:    cfg.Telegram.BotToken,
 			InitDataTTL: cfg.Telegram.InitDataTTL,
 		},
+		Google: userspublic.GoogleConfig{
+			ClientID: cfg.Google.ClientID,
+			JWKSURL:  cfg.Google.JWKSURL,
+		},
+		Apple: userspublic.AppleConfig{
+			ClientID: cfg.Apple.ClientID,
+			JWKSURL:  cfg.Apple.JWKSURL,
+		},
 	}
 }

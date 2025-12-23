@@ -3,8 +3,10 @@ package application
 import (
 	"context"
 
+	"github.com/vaaxooo/xbackend/internal/modules/users/application/apple"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/challenge"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/common"
+	"github.com/vaaxooo/xbackend/internal/modules/users/application/google"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/link"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/login"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/password"
@@ -21,6 +23,8 @@ type service struct {
 	registerUC             common.Handler[register.Input, login.Output]
 	loginUC                common.Handler[login.Input, login.Output]
 	telegramUC             common.Handler[telegram.Input, login.Output]
+	googleUC               common.Handler[google.Input, login.Output]
+	appleUC                common.Handler[apple.Input, login.Output]
 	refreshUC              common.Handler[refresh.Input, refresh.Output]
 	confirmEmailUC         common.Handler[verification.ConfirmEmailInput, login.Output]
 	requestEmailUC         common.Handler[verification.RequestEmailInput, struct{}]
@@ -48,6 +52,8 @@ func NewService(
 	registerUC common.Handler[register.Input, login.Output],
 	loginUC common.Handler[login.Input, login.Output],
 	telegramUC common.Handler[telegram.Input, login.Output],
+	googleUC common.Handler[google.Input, login.Output],
+	appleUC common.Handler[apple.Input, login.Output],
 	refreshUC common.Handler[refresh.Input, refresh.Output],
 	confirmEmailUC common.Handler[verification.ConfirmEmailInput, login.Output],
 	requestEmailUC common.Handler[verification.RequestEmailInput, struct{}],
@@ -72,6 +78,8 @@ func NewService(
 		registerUC:             registerUC,
 		loginUC:                loginUC,
 		telegramUC:             telegramUC,
+		googleUC:               googleUC,
+		appleUC:                appleUC,
 		refreshUC:              refreshUC,
 		confirmEmailUC:         confirmEmailUC,
 		requestEmailUC:         requestEmailUC,
@@ -104,6 +112,14 @@ func (s *service) Login(ctx context.Context, in login.Input) (login.Output, erro
 
 func (s *service) LoginWithTelegram(ctx context.Context, in telegram.Input) (login.Output, error) {
 	return s.telegramUC.Handle(ctx, in)
+}
+
+func (s *service) LoginWithGoogle(ctx context.Context, in google.Input) (login.Output, error) {
+	return s.googleUC.Handle(ctx, in)
+}
+
+func (s *service) LoginWithApple(ctx context.Context, in apple.Input) (login.Output, error) {
+	return s.appleUC.Handle(ctx, in)
 }
 
 func (s *service) Refresh(ctx context.Context, in refresh.Input) (refresh.Output, error) {

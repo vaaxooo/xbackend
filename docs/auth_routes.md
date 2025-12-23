@@ -18,6 +18,8 @@ This document summarizes the user-facing `/auth` routes, what each endpoint does
 | `/auth/password/reset` | POST | Request a password reset email. |
 | `/auth/password/confirm` | POST | Set a new password using a reset code. |
 | `/auth/telegram` | POST | Log in via Telegram login data. |
+| `/auth/google` | POST | Log in with a Google ID token. |
+| `/auth/apple` | POST | Log in with an Apple ID token. |
 | `/auth/link` | POST | Link an external provider to the signed-in account. |
 | `/auth/2fa/setup` | POST | Begin TOTP enrollment (requires JWT). |
 | `/auth/2fa/confirm` | POST | Confirm TOTP enrollment with a code. |
@@ -55,6 +57,10 @@ There are two email confirmation flows:
 
 `POST /auth/telegram` takes the Telegram `init_data` payload and signs the user in if the Telegram identity is valid and linked.
 
+`POST /auth/google` accepts `{ "id_token" }` obtained from the Google OAuth client. The token must be issued for the backend's configured Google client ID.
+
+`POST /auth/apple` accepts `{ "id_token" }` returned by Sign in with Apple JS. The token must target the configured Apple Services ID / client ID.
+
 ## Two-factor lifecycle
 
 All TOTP management endpoints require a bearer token:
@@ -66,3 +72,12 @@ All TOTP management endpoints require a bearer token:
 ## Profile
 
 Authenticated users can fetch or update their profile via `GET /me` and `PATCH /me`. Profile fields include names and avatar URL.
+
+## Provider setup (env)
+
+These environment variables enable social logins:
+
+- `GOOGLE_CLIENT_ID` and optional `GOOGLE_JWKS_URL` (default `https://www.googleapis.com/oauth2/v3/certs`).
+- `APPLE_CLIENT_ID` and optional `APPLE_JWKS_URL` (default `https://appleid.apple.com/auth/keys`).
+
+Both endpoints expect an `id_token` minted for the configured client ID. Tokens are validated against the provider's JWKS and must be unexpired.

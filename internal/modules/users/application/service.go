@@ -3,7 +3,9 @@ package application
 import (
 	"context"
 
+	"github.com/vaaxooo/xbackend/internal/modules/users/application/apple"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/challenge"
+	"github.com/vaaxooo/xbackend/internal/modules/users/application/google"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/link"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/login"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/password"
@@ -20,6 +22,8 @@ type Service interface {
 	Register(ctx context.Context, in register.Input) (login.Output, error)
 	Login(ctx context.Context, in login.Input) (login.Output, error)
 	LoginWithTelegram(ctx context.Context, in telegram.Input) (login.Output, error)
+	LoginWithGoogle(ctx context.Context, in google.Input) (login.Output, error)
+	LoginWithApple(ctx context.Context, in apple.Input) (login.Output, error)
 	Refresh(ctx context.Context, in refresh.Input) (refresh.Output, error)
 	ConfirmEmail(ctx context.Context, in verification.ConfirmEmailInput) (login.Output, error)
 	RequestEmailConfirmation(ctx context.Context, in verification.RequestEmailInput) error
