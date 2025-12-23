@@ -430,7 +430,7 @@ func (h *Handler) RequestEmailConfirmation(w http.ResponseWriter, r *http.Reques
 		phttp.WriteError(w, status, code, msg)
 		return
 	}
-	w.WriteHeader(http.StatusAccepted)
+	phttp.WriteSuccess(w, http.StatusAccepted, "Confirmation email requested")
 }
 
 func (h *Handler) RequestPasswordReset(w http.ResponseWriter, r *http.Request) {
@@ -444,7 +444,7 @@ func (h *Handler) RequestPasswordReset(w http.ResponseWriter, r *http.Request) {
 		phttp.WriteError(w, status, code, msg)
 		return
 	}
-	w.WriteHeader(http.StatusAccepted)
+	phttp.WriteSuccess(w, http.StatusAccepted, "Password reset email requested")
 }
 
 func (h *Handler) ResetPassword(w http.ResponseWriter, r *http.Request) {
@@ -458,7 +458,7 @@ func (h *Handler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 		phttp.WriteError(w, status, code, msg)
 		return
 	}
-	w.WriteHeader(http.StatusNoContent)
+	phttp.WriteSuccess(w, http.StatusOK, "Password reset completed")
 }
 
 func (h *Handler) GetMe(w http.ResponseWriter, r *http.Request) {
@@ -529,7 +529,7 @@ func (h *Handler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.WriteHeader(http.StatusNoContent)
+	phttp.WriteSuccess(w, http.StatusOK, "Password changed")
 }
 
 func (h *Handler) LinkProvider(w http.ResponseWriter, r *http.Request) {
@@ -622,7 +622,7 @@ func (h *Handler) RevokeSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.WriteHeader(http.StatusNoContent)
+	phttp.WriteSuccess(w, http.StatusOK, "Session revoked")
 }
 
 func (h *Handler) RevokeOtherSessions(w http.ResponseWriter, r *http.Request) {
@@ -654,7 +654,7 @@ func (h *Handler) RevokeOtherSessions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.WriteHeader(http.StatusNoContent)
+	phttp.WriteSuccess(w, http.StatusOK, "Other sessions revoked")
 }
 
 func (h *Handler) SetupTwoFactor(w http.ResponseWriter, r *http.Request) {
@@ -688,7 +688,7 @@ func (h *Handler) ConfirmTwoFactor(w http.ResponseWriter, r *http.Request) {
 		phttp.WriteError(w, status, code, msg)
 		return
 	}
-	w.WriteHeader(http.StatusNoContent)
+	phttp.WriteSuccess(w, http.StatusOK, "Two-factor authentication enabled")
 }
 
 func (h *Handler) DisableTwoFactor(w http.ResponseWriter, r *http.Request) {
@@ -707,24 +707,33 @@ func (h *Handler) DisableTwoFactor(w http.ResponseWriter, r *http.Request) {
 		phttp.WriteError(w, status, code, msg)
 		return
 	}
-	w.WriteHeader(http.StatusNoContent)
+	phttp.WriteSuccess(w, http.StatusOK, "Two-factor authentication disabled")
 }
 
 func mapError(err error) (status int, code string, message string) {
 	if errors.Is(err, domain.ErrInvalidEmail) || errors.Is(err, domain.ErrWeakPassword) || errors.Is(err, domain.ErrInvalidDisplayName) || errors.Is(err, domain.ErrInvalidAvatarURL) {
 		return http.StatusBadRequest, "validation_error", "Validation error"
 	}
-	if errors.Is(err, domain.ErrEmailAlreadyUsed) || errors.Is(err, domain.ErrIdentityAlreadyLinked) {
-		return http.StatusConflict, "conflict", "Conflict"
+	if errors.Is(err, domain.ErrEmailAlreadyUsed) {
+		return http.StatusConflict, "email_already_used", "Email already used"
 	}
-	if errors.Is(err, domain.ErrInvalidCredentials) || errors.Is(err, domain.ErrRefreshTokenInvalid) {
-		return http.StatusUnauthorized, "unauthorized", "Unauthorized"
+	if errors.Is(err, domain.ErrIdentityAlreadyLinked) {
+		return http.StatusConflict, "identity_already_linked", "Identity already linked"
+	}
+	if errors.Is(err, domain.ErrInvalidCredentials) {
+		return http.StatusUnauthorized, "invalid_credentials", "Invalid credentials"
+	}
+	if errors.Is(err, domain.ErrRefreshTokenInvalid) {
+		return http.StatusUnauthorized, "refresh_token_invalid", "Refresh token invalid"
 	}
 	if errors.Is(err, domain.ErrEmailNotVerified) {
 		return http.StatusForbidden, "email_not_verified", "Email not verified"
 	}
-	if errors.Is(err, domain.ErrTwoFactorRequired) || errors.Is(err, domain.ErrInvalidTwoFactor) {
+	if errors.Is(err, domain.ErrTwoFactorRequired) {
 		return http.StatusUnauthorized, "two_factor_required", "Two-factor verification required"
+	}
+	if errors.Is(err, domain.ErrInvalidTwoFactor) {
+		return http.StatusUnauthorized, "invalid_two_factor", "Invalid two-factor code"
 	}
 	if errors.Is(err, domain.ErrTwoFactorAlreadyEnabled) {
 		return http.StatusConflict, "two_factor_already_enabled", "Two-factor is already enabled"
