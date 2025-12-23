@@ -11,7 +11,6 @@ import (
 type ResetPasswordInput struct {
 	Email       string
 	Token       string
-	Code        string
 	NewPassword string
 }
 
@@ -52,7 +51,7 @@ func (uc *ResetPasswordUseCase) Execute(ctx context.Context, in ResetPasswordInp
 		return struct{}{}, common.NormalizeError(err)
 	}
 	now := time.Now().UTC()
-	if !found || token.Type != domain.TokenTypePasswordReset || token.IdentityID != ident.ID || !token.IsValid(in.Code, now) {
+	if !found || token.Type != domain.TokenTypePasswordReset || token.IdentityID != ident.ID || !token.IsActive(now) {
 		return struct{}{}, domain.ErrInvalidCredentials
 	}
 

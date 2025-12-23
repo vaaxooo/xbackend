@@ -85,9 +85,13 @@ func (uc *RequestUseCase) request(ctx context.Context, emailRaw string, tokenTyp
 	}
 
 	now := time.Now().UTC()
-	code, err := domain.GenerateNumericCode(6)
-	if err != nil {
-		return common.NormalizeError(err)
+	code := ""
+	if tokenType == domain.TokenTypeEmailConfirmation {
+		generated, err := domain.GenerateNumericCode(6)
+		if err != nil {
+			return common.NormalizeError(err)
+		}
+		code = generated
 	}
 	ttl := uc.emailTTL
 	if tokenType == domain.TokenTypePasswordReset {
@@ -114,7 +118,6 @@ func (uc *RequestUseCase) request(ctx context.Context, emailRaw string, tokenTyp
 			IdentityID: ident.ID,
 			Email:      email.String(),
 			Token:      token.ID,
-			Code:       code,
 			ExpiresAt:  token.ExpiresAt,
 			OccurredAt: now,
 		})

@@ -47,6 +47,13 @@ func (t VerificationToken) IsValid(code string, now time.Time) bool {
 	return t.Code == code
 }
 
+func (t VerificationToken) IsActive(now time.Time) bool {
+	if t.UsedAt != nil {
+		return false
+	}
+	return !now.After(t.ExpiresAt)
+}
+
 func (t VerificationToken) MarkUsed(at time.Time) VerificationToken {
 	t.UsedAt = &at
 	return t

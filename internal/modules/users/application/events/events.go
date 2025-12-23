@@ -25,7 +25,6 @@ type PasswordResetRequested struct {
 	IdentityID string    `json:"identity_id"`
 	Email      string    `json:"email"`
 	Token      string    `json:"token"`
-	Code       string    `json:"code"`
 	ExpiresAt  time.Time `json:"expires_at"`
 	OccurredAt time.Time `json:"occurred_at"`
 }
