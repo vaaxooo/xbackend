@@ -23,7 +23,9 @@ func (uc *UseCase) List(ctx context.Context, in ListInput) (Output, error) {
 	}
 
 	currentID := ""
-	if in.CurrentRefreshToken != "" {
+	if in.CurrentSessionID != "" {
+		currentID = in.CurrentSessionID
+	} else if in.CurrentRefreshToken != "" {
 		hash := common.HashToken(in.CurrentRefreshToken)
 		current, found, err := uc.refresh.GetByHash(ctx, hash)
 		if err != nil {
@@ -41,7 +43,15 @@ func (uc *UseCase) List(ctx context.Context, in ListInput) (Output, error) {
 	}
 
 	sessions := make([]Session, 0, len(tokens))
+	now := time.Now().UTC()
+	foundCurrent := false
 	for _, t := range tokens {
+		if !t.IsValid(now) {
+			continue
+		}
+		if t.ID == currentID {
+			foundCurrent = true
+		}
 		session := Session{
 			ID:        t.ID,
 			UserAgent: t.UserAgent,
@@ -54,6 +64,30 @@ func (uc *UseCase) List(ctx context.Context, in ListInput) (Output, error) {
 			session.RevokedAt = t.RevokedAt
 		}
 		sessions = append(sessions, session)
+	}
+
+	if currentID != "" && !foundCurrent {
+		current, found, err := uc.refresh.GetByID(ctx, currentID)
+		if err != nil {
+			return Output{}, common.NormalizeError(err)
+		}
+		if found && current.UserID == userID && current.IsValid(now) {
+			session := Session{
+				ID:        current.ID,
+				UserAgent: current.UserAgent,
+				IP:        current.IP,
+				CreatedAt: current.CreatedAt,
+				ExpiresAt: current.ExpiresAt,
+				Current:   true,
+			}
+			if current.RevokedAt != nil {
+				session.RevokedAt = current.RevokedAt
+			}
+			sessions = append([]Session{session}, sessions...)
+			if len(sessions) > 15 {
+				sessions = sessions[:15]
+			}
+		}
 	}
 
 	return Output{Sessions: sessions}, nil

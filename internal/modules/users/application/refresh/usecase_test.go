@@ -23,10 +23,16 @@ type refreshRepoMock struct {
 	err     error
 	revoked string
 	created []domain.RefreshToken
+	updated []domain.RefreshToken
 }
 
 func (m *refreshRepoMock) Create(_ context.Context, t domain.RefreshToken) error {
 	m.created = append(m.created, t)
+	return m.err
+}
+
+func (m *refreshRepoMock) Update(_ context.Context, t domain.RefreshToken) error {
+	m.updated = append(m.updated, t)
 	return m.err
 }
 
@@ -43,6 +49,10 @@ func (m *refreshRepoMock) GetByID(_ context.Context, id string) (domain.RefreshT
 
 func (m *refreshRepoMock) ListByUser(context.Context, domain.UserID) ([]domain.RefreshToken, error) {
 	return []domain.RefreshToken{m.stored}, m.err
+}
+
+func (m *refreshRepoMock) FindActiveByFingerprint(context.Context, domain.UserID, string, string, time.Time) (domain.RefreshToken, bool, error) {
+	return domain.RefreshToken{}, false, m.err
 }
 
 func (m *refreshRepoMock) Revoke(_ context.Context, id string) error {
@@ -71,7 +81,7 @@ func TestRefreshSuccess(t *testing.T) {
 	if out.AccessToken != "access" || out.RefreshToken == "" {
 		t.Fatalf("unexpected output: %+v", out)
 	}
-	if !uow.called || repo.revoked != "id" || len(repo.created) != 1 {
+	if !uow.called || len(repo.updated) != 1 {
 		t.Fatalf("expected token rotation inside transaction")
 	}
 }

@@ -96,12 +96,19 @@ func (uc *ConfirmEmailUseCase) Execute(ctx context.Context, in ConfirmEmailInput
 		return login.Output{}, common.NormalizeError(err)
 	}
 	refreshHash := common.HashToken(refreshRaw)
-	refreshRecord := common.NewRefreshRecord(ctx, user.ID, refreshHash, usedAt, uc.refreshTTL)
+	refreshRecord, reuse, err := common.PrepareRefreshRecord(ctx, uc.refresh, user.ID, refreshHash, usedAt, uc.refreshTTL)
+	if err != nil {
+		return login.Output{}, common.NormalizeError(err)
+	}
 	accessToken, err := uc.access.Issue(user.ID.String(), refreshRecord.ID, uc.accessTTL)
 	if err != nil {
 		return login.Output{}, common.NormalizeError(err)
 	}
-	if err := uc.refresh.Create(ctx, refreshRecord); err != nil {
+	if reuse {
+		if err := uc.refresh.Update(ctx, refreshRecord); err != nil {
+			return login.Output{}, common.NormalizeError(err)
+		}
+	} else if err := uc.refresh.Create(ctx, refreshRecord); err != nil {
 		return login.Output{}, common.NormalizeError(err)
 	}
 

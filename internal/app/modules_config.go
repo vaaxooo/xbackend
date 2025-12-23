@@ -13,6 +13,7 @@ func UsersConfig(cfg *pconfig.Config) userspublic.Config {
 			JWTSecret:                cfg.Auth.JWTSecret,
 			AccessTTL:                cfg.Auth.AccessTTL,
 			RefreshTTL:               cfg.Auth.RefreshTTL,
+			RefreshRetentionTTL:      cfg.Auth.RefreshRetentionTTL,
 			RequireEmailConfirmation: cfg.Auth.RequireEmailConfirmation,
 			VerificationTTL:          cfg.Auth.VerificationTTL,
 			PasswordResetTTL:         cfg.Auth.PasswordResetTTL,

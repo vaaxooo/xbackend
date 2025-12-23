@@ -95,13 +95,17 @@ func (uc *UseCase) Execute(ctx context.Context, in Input) (login.Output, error) 
 	var accessToken string
 	var refreshRaw string
 	var refreshRecord domain.RefreshToken
+	var refreshReuse bool
 	if !uc.requireEmailConfirmation {
 		refreshRaw, err = common.NewRefreshToken()
 		if err != nil {
 			return login.Output{}, common.NormalizeError(err)
 		}
 		refreshHash := common.HashToken(refreshRaw)
-		refreshRecord = common.NewRefreshRecord(ctx, userID, refreshHash, now, uc.refreshTTL)
+		refreshRecord, refreshReuse, err = common.PrepareRefreshRecord(ctx, uc.refresh, userID, refreshHash, now, uc.refreshTTL)
+		if err != nil {
+			return login.Output{}, common.NormalizeError(err)
+		}
 
 		accessToken, err = uc.access.Issue(userID.String(), refreshRecord.ID, uc.accessTTL)
 		if err != nil {
@@ -125,7 +129,11 @@ func (uc *UseCase) Execute(ctx context.Context, in Input) (login.Output, error) 
 	}
 
 	if refreshRecord.ID != "" {
-		if err := uc.refresh.Create(ctx, refreshRecord); err != nil {
+		if refreshReuse {
+			if err := uc.refresh.Update(ctx, refreshRecord); err != nil {
+				return login.Output{}, common.NormalizeError(err)
+			}
+		} else if err := uc.refresh.Create(ctx, refreshRecord); err != nil {
 			return login.Output{}, common.NormalizeError(err)
 		}
 	}

@@ -5,6 +5,7 @@ import "time"
 type ListInput struct {
 	UserID              string
 	CurrentRefreshToken string
+	CurrentSessionID    string
 }
 
 type RevokeInput struct {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"net"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/common"
@@ -57,8 +58,31 @@ func (m UseCaseMiddleware) contextWithTimeout(r *http.Request) (context.Context,
 }
 
 func clientIP(r *http.Request) string {
-	if host, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
-		return host
+	if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
+		for _, part := range strings.Split(forwarded, ",") {
+			if ip := normalizeIP(part); ip != "" {
+				return ip
+			}
+		}
 	}
-	return r.RemoteAddr
+	if realIP := normalizeIP(r.Header.Get("X-Real-IP")); realIP != "" {
+		return realIP
+	}
+	host := r.RemoteAddr
+	if parsedHost, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
+		host = parsedHost
+	}
+	return normalizeIP(host)
+}
+
+func normalizeIP(raw string) string {
+	trimmed := strings.TrimSpace(strings.Trim(raw, "[]"))
+	if trimmed == "" {
+		return ""
+	}
+	ip := net.ParseIP(trimmed)
+	if ip == nil {
+		return trimmed
+	}
+	return ip.String()
 }

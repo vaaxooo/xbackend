@@ -567,6 +567,7 @@ func (h *Handler) ListSessions(w http.ResponseWriter, r *http.Request) {
 		phttp.WriteError(w, http.StatusUnauthorized, "unauthorized", "Unauthorized")
 		return
 	}
+	currentSessionID, _ := httpctx.SessionIDFromContext(r.Context())
 
 	current := r.URL.Query().Get("current_refresh_token")
 	if current == "" {
@@ -576,6 +577,7 @@ func (h *Handler) ListSessions(w http.ResponseWriter, r *http.Request) {
 	out, err := phttp.HandleUseCase(h.middleware, r, h.listSessions, usersapi.ListSessionsInput{
 		UserID:              uid,
 		CurrentRefreshToken: current,
+		CurrentSessionID:    currentSessionID,
 	})
 	if err != nil {
 		status, code, msg := mapError(err)

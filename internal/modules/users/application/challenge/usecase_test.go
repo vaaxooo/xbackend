@@ -92,6 +92,7 @@ func (m *userRepoMock) UpdateProfile(context.Context, domain.User) (domain.User,
 type refreshRepoMock struct{}
 
 func (refreshRepoMock) Create(context.Context, domain.RefreshToken) error { return nil }
+func (refreshRepoMock) Update(context.Context, domain.RefreshToken) error { return nil }
 func (refreshRepoMock) GetByHash(context.Context, string) (domain.RefreshToken, bool, error) {
 	return domain.RefreshToken{}, false, nil
 }
@@ -100,6 +101,9 @@ func (refreshRepoMock) GetByID(context.Context, string) (domain.RefreshToken, bo
 }
 func (refreshRepoMock) ListByUser(context.Context, domain.UserID) ([]domain.RefreshToken, error) {
 	return nil, nil
+}
+func (refreshRepoMock) FindActiveByFingerprint(context.Context, domain.UserID, string, string, time.Time) (domain.RefreshToken, bool, error) {
+	return domain.RefreshToken{}, false, nil
 }
 func (refreshRepoMock) Revoke(context.Context, string) error                           { return nil }
 func (refreshRepoMock) RevokeAllExcept(context.Context, domain.UserID, []string) error { return nil }
