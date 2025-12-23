@@ -152,13 +152,20 @@ func (uc *UseCase) issueTokens(ctx context.Context, user domain.User) (login.Out
 	}
 	refreshHash := common.HashToken(refreshRaw)
 	now := time.Now().UTC()
-	refreshRecord := common.NewRefreshRecord(ctx, user.ID, refreshHash, now, uc.refreshTTL)
+	refreshRecord, reuse, err := common.PrepareRefreshRecord(ctx, uc.refresh, user.ID, refreshHash, now, uc.refreshTTL)
+	if err != nil {
+		return login.Output{}, common.NormalizeError(err)
+	}
 
 	accessToken, err := uc.access.Issue(user.ID.String(), refreshRecord.ID, uc.accessTTL)
 	if err != nil {
 		return login.Output{}, common.NormalizeError(err)
 	}
-	if err := uc.refresh.Create(ctx, refreshRecord); err != nil {
+	if reuse {
+		if err := uc.refresh.Update(ctx, refreshRecord); err != nil {
+			return login.Output{}, common.NormalizeError(err)
+		}
+	} else if err := uc.refresh.Create(ctx, refreshRecord); err != nil {
 		return login.Output{}, common.NormalizeError(err)
 	}
 

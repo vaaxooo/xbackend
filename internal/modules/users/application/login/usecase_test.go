@@ -63,6 +63,9 @@ func (m *loginRefreshRepoMock) Create(_ context.Context, token domain.RefreshTok
 	m.created = append(m.created, token)
 	return nil
 }
+func (m *loginRefreshRepoMock) Update(context.Context, domain.RefreshToken) error {
+	return nil
+}
 func (m *loginRefreshRepoMock) GetByHash(context.Context, string) (domain.RefreshToken, bool, error) {
 	return domain.RefreshToken{}, false, errors.New("not implemented")
 }
@@ -71,6 +74,9 @@ func (m *loginRefreshRepoMock) GetByID(context.Context, string) (domain.RefreshT
 }
 func (m *loginRefreshRepoMock) ListByUser(context.Context, domain.UserID) ([]domain.RefreshToken, error) {
 	return nil, errors.New("not implemented")
+}
+func (m *loginRefreshRepoMock) FindActiveByFingerprint(context.Context, domain.UserID, string, string, time.Time) (domain.RefreshToken, bool, error) {
+	return domain.RefreshToken{}, false, nil
 }
 func (m *loginRefreshRepoMock) Revoke(context.Context, string) error { return nil }
 func (m *loginRefreshRepoMock) RevokeAllExcept(context.Context, domain.UserID, []string) error {

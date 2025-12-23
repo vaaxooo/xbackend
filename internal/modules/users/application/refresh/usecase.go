@@ -60,14 +60,18 @@ func (uc *UseCase) Execute(ctx context.Context, in Input) (Output, error) {
 	}
 	newHash := common.HashToken(newRefresh)
 	refreshRecord := common.NewRefreshRecord(ctx, stored.UserID, newHash, now, uc.refreshTTL)
+	refreshRecord.ID = stored.ID
+	if refreshRecord.UserAgent == "" {
+		refreshRecord.UserAgent = stored.UserAgent
+	}
+	if refreshRecord.IP == "" {
+		refreshRecord.IP = stored.IP
+	}
 	accessToken, err := uc.access.Issue(stored.UserID.String(), refreshRecord.ID, uc.accessTTL)
 	if err != nil {
 		return Output{}, common.NormalizeError(err)
 	}
-	if err := uc.refreshRepo.Revoke(ctx, stored.ID); err != nil {
-		return Output{}, common.NormalizeError(err)
-	}
-	if err := uc.refreshRepo.Create(ctx, refreshRecord); err != nil {
+	if err := uc.refreshRepo.Update(ctx, refreshRecord); err != nil {
 		return Output{}, common.NormalizeError(err)
 	}
 

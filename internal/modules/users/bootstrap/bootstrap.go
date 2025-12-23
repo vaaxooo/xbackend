@@ -51,7 +51,7 @@ type Dependencies struct {
 func Init(deps Dependencies, cfg public.Config) (*Module, error) {
 	usersRepo := usersdb.NewUserRepo(deps.DB)
 	identityRepo := usersdb.NewIdentityRepo(deps.DB)
-	refreshRepo := usersdb.NewRefreshRepo(deps.DB)
+	refreshRepo := usersdb.NewRefreshRepo(deps.DB, cfg.Auth.RefreshRetentionTTL)
 	tokenRepo := usersdb.NewVerificationTokenRepo(deps.DB)
 	challengeRepo := usersdb.NewChallengeRepo(deps.DB)
 	outboxRepo := usersevents.NewOutboxRepository(deps.DB)

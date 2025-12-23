@@ -19,7 +19,7 @@ func TestRefreshRepoLifecycle(t *testing.T) {
 	}
 	defer db.Close()
 
-	repo := NewRefreshRepo(db)
+	repo := NewRefreshRepo(db, -1)
 	now := time.Unix(0, 0).UTC()
 	token := domain.NewRefreshTokenRecord("user", "hash", now, time.Hour)
 
@@ -47,8 +47,8 @@ func TestRefreshRepoLifecycle(t *testing.T) {
 
 	listRows := sqlmock.NewRows([]string{"id", "user_id", "token_hash", "expires_at", "revoked_at", "created_at", "user_agent", "ip"}).
 		AddRow(token.ID, token.UserID.String(), token.TokenHash, token.ExpiresAt, nil, token.CreatedAt, "agent", "1.1.1.1")
-	mock.ExpectQuery(regexp.QuoteMeta("SELECT\n            id::text,\n            user_id::text,\n            token_hash,\n            expires_at,\n            revoked_at,\n            created_at,\n            COALESCE(user_agent, ''),\n            COALESCE(ip, '')\n        FROM auth_refresh_tokens\n        WHERE user_id = $1::uuid\n        ORDER BY created_at DESC")).
-		WithArgs(token.UserID.String()).
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT\n            id::text,\n            user_id::text,\n            token_hash,\n            expires_at,\n            revoked_at,\n            created_at,\n            COALESCE(user_agent, ''),\n            COALESCE(ip, '')\n        FROM auth_refresh_tokens\n        WHERE user_id = $1::uuid AND revoked_at IS NULL AND expires_at > $2\n        ORDER BY created_at DESC\n        LIMIT 15")).
+		WithArgs(token.UserID.String(), sqlmock.AnyArg()).
 		WillReturnRows(listRows)
 
 	tokens, err := repo.ListByUser(context.Background(), token.UserID)

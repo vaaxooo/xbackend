@@ -20,9 +20,11 @@ type IdentityRepository interface {
 
 type RefreshTokenRepository interface {
 	Create(ctx context.Context, t RefreshToken) error
+	Update(ctx context.Context, t RefreshToken) error
 	GetByHash(ctx context.Context, tokenHash string) (RefreshToken, bool, error)
 	GetByID(ctx context.Context, tokenID string) (RefreshToken, bool, error)
 	ListByUser(ctx context.Context, userID UserID) ([]RefreshToken, error)
+	FindActiveByFingerprint(ctx context.Context, userID UserID, userAgent, ip string, now time.Time) (RefreshToken, bool, error)
 	Revoke(ctx context.Context, tokenID string) error
 	RevokeAllExcept(ctx context.Context, userID UserID, keepIDs []string) error
 }

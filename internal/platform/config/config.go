@@ -41,6 +41,7 @@ type AuthConfig struct {
 	JWTSecret                string
 	AccessTTL                time.Duration
 	RefreshTTL               time.Duration
+	RefreshRetentionTTL      time.Duration
 	RequireEmailConfirmation bool
 	VerificationTTL          time.Duration
 	PasswordResetTTL         time.Duration
