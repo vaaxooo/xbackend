@@ -56,7 +56,7 @@ func Init(deps Dependencies, cfg public.Config) (*Module, error) {
 
 	hasher := userscrypto.NewBcryptHasher(0)
 
-    authPort, err := usersauth.NewJWTAuth(cfg.Auth.JWTSecret, refreshRepo)
+	authPort, err := usersauth.NewJWTAuth(cfg.Auth.JWTSecret, refreshRepo)
 	if err != nil {
 		return nil, err
 	}
@@ -121,8 +121,8 @@ func Init(deps Dependencies, cfg public.Config) (*Module, error) {
 		fn: challengeUC.ConfirmEmail,
 	})
 
-	meUC := common.NewTransactionalUseCase(uow, profile.NewGet(usersRepo))
-	profileUC := common.NewTransactionalUseCase(uow, profile.NewUpdate(usersRepo))
+	meUC := common.NewTransactionalUseCase(uow, profile.NewGet(usersRepo, identityRepo))
+	profileUC := common.NewTransactionalUseCase(uow, profile.NewUpdate(usersRepo, identityRepo))
 	changePasswordUC := common.NewTransactionalUseCase(uow, password.NewChange(identityRepo, hasher))
 	linkUC := link.New(identityRepo)
 	sessionsUC := session.New(refreshRepo)

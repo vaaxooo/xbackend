@@ -54,6 +54,9 @@ func (uc *UseCase) Setup(ctx context.Context, in SetupInput) (SetupOutput, error
 	if !found {
 		return SetupOutput{}, domain.ErrInvalidCredentials
 	}
+	if ident.IsTwoFactorEnabled() {
+		return SetupOutput{}, domain.ErrTwoFactorAlreadyEnabled
+	}
 
 	key, err := totp.Generate(totp.GenerateOpts{
 		Issuer:      uc.issuer,
