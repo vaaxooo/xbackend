@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/common"
 	"github.com/vaaxooo/xbackend/internal/modules/users/domain"
 )
@@ -35,6 +36,10 @@ func NewResetPasswordUseCase(
 func (uc *ResetPasswordUseCase) Execute(ctx context.Context, in ResetPasswordInput) (struct{}, error) {
 	email, err := domain.NewEmail(in.Email)
 	if err != nil {
+		return struct{}{}, domain.ErrInvalidCredentials
+	}
+
+	if _, err := uuid.Parse(in.Token); err != nil {
 		return struct{}{}, domain.ErrInvalidCredentials
 	}
 
