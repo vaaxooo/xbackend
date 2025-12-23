@@ -23,6 +23,7 @@ type emailTemplates struct {
 
 type templateData struct {
 	Code    string
+	Token   string
 	Expires string
 }
 
@@ -41,7 +42,7 @@ func (t emailTemplates) renderConfirmation(evt userevents.EmailConfirmationReque
 }
 
 func (t emailTemplates) renderPasswordReset(evt userevents.PasswordResetRequested) (string, string, error) {
-	data := templateData{Code: evt.Code, Expires: evt.ExpiresAt.Format(emailTemplateDateFormat)}
+	data := templateData{Code: evt.Code, Token: evt.Token, Expires: evt.ExpiresAt.Format(emailTemplateDateFormat)}
 	return renderTemplates(t.resetText, t.resetHTML, data)
 }
 

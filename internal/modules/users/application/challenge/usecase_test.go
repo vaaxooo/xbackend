@@ -110,6 +110,9 @@ func (verificationRepoMock) Create(context.Context, domain.VerificationToken) er
 func (verificationRepoMock) GetLatest(context.Context, string, domain.TokenType) (domain.VerificationToken, bool, error) {
 	return domain.VerificationToken{}, false, nil
 }
+func (verificationRepoMock) GetByID(context.Context, string) (domain.VerificationToken, bool, error) {
+	return domain.VerificationToken{}, false, nil
+}
 func (verificationRepoMock) GetByCode(context.Context, string, domain.TokenType, string) (domain.VerificationToken, bool, error) {
 	return domain.VerificationToken{}, false, nil
 }

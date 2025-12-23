@@ -19,24 +19,25 @@ type IdentityRepository interface {
 }
 
 type RefreshTokenRepository interface {
-        Create(ctx context.Context, t RefreshToken) error
-        GetByHash(ctx context.Context, tokenHash string) (RefreshToken, bool, error)
-        GetByID(ctx context.Context, tokenID string) (RefreshToken, bool, error)
-        ListByUser(ctx context.Context, userID UserID) ([]RefreshToken, error)
-        Revoke(ctx context.Context, tokenID string) error
-        RevokeAllExcept(ctx context.Context, userID UserID, keepIDs []string) error
+	Create(ctx context.Context, t RefreshToken) error
+	GetByHash(ctx context.Context, tokenHash string) (RefreshToken, bool, error)
+	GetByID(ctx context.Context, tokenID string) (RefreshToken, bool, error)
+	ListByUser(ctx context.Context, userID UserID) ([]RefreshToken, error)
+	Revoke(ctx context.Context, tokenID string) error
+	RevokeAllExcept(ctx context.Context, userID UserID, keepIDs []string) error
 }
 
 type VerificationTokenRepository interface {
-        Create(ctx context.Context, token VerificationToken) error
-        GetLatest(ctx context.Context, identityID string, tokenType TokenType) (VerificationToken, bool, error)
-        GetByCode(ctx context.Context, identityID string, tokenType TokenType, code string) (VerificationToken, bool, error)
-        MarkUsed(ctx context.Context, tokenID string, usedAt time.Time) error
+	Create(ctx context.Context, token VerificationToken) error
+	GetLatest(ctx context.Context, identityID string, tokenType TokenType) (VerificationToken, bool, error)
+	GetByID(ctx context.Context, tokenID string) (VerificationToken, bool, error)
+	GetByCode(ctx context.Context, identityID string, tokenType TokenType, code string) (VerificationToken, bool, error)
+	MarkUsed(ctx context.Context, tokenID string, usedAt time.Time) error
 }
 
 type ChallengeRepository interface {
-        Create(ctx context.Context, challenge Challenge) error
-        Update(ctx context.Context, challenge Challenge) error
-        GetByID(ctx context.Context, id string) (Challenge, bool, error)
-        GetPendingByUser(ctx context.Context, userID UserID) (Challenge, bool, error)
+	Create(ctx context.Context, challenge Challenge) error
+	Update(ctx context.Context, challenge Challenge) error
+	GetByID(ctx context.Context, id string) (Challenge, bool, error)
+	GetPendingByUser(ctx context.Context, userID UserID) (Challenge, bool, error)
 }

@@ -42,6 +42,7 @@ type PasswordResetRequest struct {
 
 type PasswordResetConfirmRequest struct {
 	Email    string `json:"email"`
+	Token    string `json:"token"`
 	Code     string `json:"code"`
 	Password string `json:"password"`
 }

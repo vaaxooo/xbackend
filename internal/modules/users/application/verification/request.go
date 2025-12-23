@@ -113,6 +113,7 @@ func (uc *RequestUseCase) request(ctx context.Context, emailRaw string, tokenTyp
 			UserID:     ident.UserID.String(),
 			IdentityID: ident.ID,
 			Email:      email.String(),
+			Token:      token.ID,
 			Code:       code,
 			ExpiresAt:  token.ExpiresAt,
 			OccurredAt: now,

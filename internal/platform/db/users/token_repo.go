@@ -46,6 +46,15 @@ func (r *VerificationTokenRepo) GetLatest(ctx context.Context, identityID string
 	return r.fetch(ctx, q, identityID, string(tokenType))
 }
 
+func (r *VerificationTokenRepo) GetByID(ctx context.Context, tokenID string) (domain.VerificationToken, bool, error) {
+	const q = `
+        SELECT id::text, identity_id::text, token_type, token_code, expires_at, used_at, created_at
+        FROM auth_verification_tokens
+        WHERE id = $1::uuid
+    `
+	return r.fetch(ctx, q, tokenID)
+}
+
 func (r *VerificationTokenRepo) GetByCode(ctx context.Context, identityID string, tokenType domain.TokenType, code string) (domain.VerificationToken, bool, error) {
 	const q = `
         SELECT id::text, identity_id::text, token_type, token_code, expires_at, used_at, created_at
