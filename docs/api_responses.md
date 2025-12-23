@@ -15,25 +15,25 @@
 }
 ```
 
-Частые коды и статусы:
+Частые коды, статусы и тексты ошибок:
 
-| Код | HTTP статус | Комментарий |
-| --- | --- | --- |
-| `validation_error` | `400` | Некорректный JSON/валидация email/пароля/аватара и т.п. |
-| `email_already_used` | `409` | Email уже зарегистрирован. |
-| `identity_already_linked` | `409` | Внешний провайдер уже привязан. |
-| `invalid_credentials` | `401` | Неверный логин/пароль. |
-| `refresh_token_invalid` | `401` | Истёкший/отозванный refresh токен. |
-| `email_not_verified` | `403` | Требуется подтверждение email. |
-| `two_factor_required` | `401` | Нужна верификация 2FA перед выдачей токенов. |
-| `invalid_two_factor` | `401` | Неверный код 2FA. |
-| `two_factor_already_enabled` | `409` | Попытка повторно включить 2FA. |
-| `too_many_requests` | `429` | Сработал rate limiting. |
-| `unauthorized` | `401` | Нет или истёкший access-токен. |
-| `internal_error` | `500` | Непредвиденная ошибка сервера. |
+| Код | HTTP статус | Сообщение | Комментарий |
+| --- | --- | --- | --- |
+| `validation_error` | `400` | `"Validation error"` | Некорректный JSON/валидация email/пароля/аватара и т.п. |
+| `email_already_used` | `409` | `"Email already used"` | Email уже зарегистрирован. |
+| `identity_already_linked` | `409` | `"Identity already linked"` | Внешний провайдер уже привязан. |
+| `invalid_credentials` | `401` | `"Invalid credentials"` | Неверный логин/пароль. |
+| `refresh_token_invalid` | `401` | `"Refresh token invalid"` | Истёкший/отозванный refresh токен. |
+| `email_not_verified` | `403` | `"Email not verified"` | Требуется подтверждение email. |
+| `two_factor_required` | `401` | `"Two-factor verification required"` | Нужна верификация 2FA перед выдачей токенов. |
+| `invalid_two_factor` | `401` | `"Invalid two-factor code"` | Неверный код 2FA. |
+| `two_factor_already_enabled` | `409` | `"Two-factor is already enabled"` | Попытка повторно включить 2FA. |
+| `too_many_requests` | `429` | `"Too many requests"` | Сработал rate limiting. |
+| `unauthorized` | `401` | `"Unauthorized"` | Нет или истёкший access-токен. |
+| `internal_error` | `500` | `"Internal server error"` | Непредвиденная ошибка сервера. |
 
 ## Формат успешного ответа без данных
-Для действий без отдельного payload возвращается единый формат:
+Для действий без отдельного payload возвращается единый формат без поля `code` (используется только в ошибках):
 
 ```json
 { "status": "ok", "message": "<описание действия>" }
