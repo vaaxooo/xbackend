@@ -18,6 +18,10 @@ type TelegramLoginRequest struct {
 	InitData string `json:"init_data"`
 }
 
+type SocialIDTokenRequest struct {
+	IDToken string `json:"id_token"`
+}
+
 type RefreshRequest struct {
 	RefreshToken string `json:"refresh_token"`
 }

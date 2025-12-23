@@ -15,7 +15,9 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	usersapp "github.com/vaaxooo/xbackend/internal/modules/users/application"
+	"github.com/vaaxooo/xbackend/internal/modules/users/application/apple"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/challenge"
+	"github.com/vaaxooo/xbackend/internal/modules/users/application/google"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/link"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/login"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/password"
@@ -58,6 +60,10 @@ type fakeService struct {
 
 	telegramOut login.Output
 	telegramErr error
+	googleOut   login.Output
+	googleErr   error
+	appleOut    login.Output
+	appleErr    error
 
 	refreshOut refresh.Output
 	refreshErr error
@@ -102,6 +108,12 @@ func (f *fakeService) Login(context.Context, login.Input) (login.Output, error) 
 }
 func (f *fakeService) LoginWithTelegram(context.Context, telegram.Input) (login.Output, error) {
 	return f.telegramOut, f.telegramErr
+}
+func (f *fakeService) LoginWithGoogle(context.Context, google.Input) (login.Output, error) {
+	return f.googleOut, f.googleErr
+}
+func (f *fakeService) LoginWithApple(context.Context, apple.Input) (login.Output, error) {
+	return f.appleOut, f.appleErr
 }
 func (f *fakeService) Refresh(context.Context, refresh.Input) (refresh.Output, error) {
 	return f.refreshOut, f.refreshErr

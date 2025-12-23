@@ -79,6 +79,12 @@ func (uc *UseCase) Status(ctx context.Context, in StatusInput) (Output, error) {
 	if err != nil || !ok {
 		return Output{}, domain.ErrUnauthorized
 	}
+	now := time.Now().UTC()
+	if challenge.IsExpired(now) && challenge.Status != domain.ChallengeStatusExpired {
+		challenge = challenge.WithStatus(domain.ChallengeStatusExpired, now)
+		challenge = challenge.WithAttemptsLeft(0, now)
+		_ = uc.challenges.Update(ctx, challenge)
+	}
 	return uc.challengeResponse(ctx, challenge, nil)
 }
 
@@ -108,6 +114,7 @@ func (uc *UseCase) VerifyTOTP(ctx context.Context, in VerifyTOTPInput) (Output, 
 	now := time.Now().UTC()
 	if challenge.IsExpired(now) {
 		challenge = challenge.WithStatus(domain.ChallengeStatusExpired, now)
+		challenge = challenge.WithAttemptsLeft(0, now)
 		_ = uc.challenges.Update(ctx, challenge)
 		return uc.challengeResponse(ctx, challenge, nil)
 	}
@@ -188,18 +195,33 @@ func (uc *UseCase) challengeResponse(ctx context.Context, challenge domain.Chall
 	if !ok {
 		return Output{}, domain.ErrUnauthorized
 	}
+	now := time.Now().UTC()
+	expiresIn := int64(challenge.ExpiresAt.Sub(now).Seconds())
+	if expiresIn < 0 {
+		expiresIn = 0
+	}
+	status := challenge.Status
+	attempts := challenge.AttemptsLeft
+	if challenge.IsExpired(now) {
+		status = domain.ChallengeStatusExpired
+		attempts = 0
+	}
 	info := &login.ChallengeInfo{
 		ID:             challenge.ID,
 		Type:           challenge.Type,
 		RequiredSteps:  stepsToString(challenge.RequiredSteps),
 		CompletedSteps: stepsToString(challenge.CompletedSteps),
-		Status:         string(challenge.Status),
-		ExpiresIn:      int64(challenge.ExpiresAt.Sub(time.Now().UTC()).Seconds()),
-		AttemptsLeft:   challenge.AttemptsLeft,
+		Status:         string(status),
+		ExpiresIn:      expiresIn,
+		AttemptsLeft:   attempts,
 		LockUntil:      challenge.LockUntil,
 	}
 	if ident != nil {
 		info.MaskedEmail = maskEmail(ident.ProviderUserID)
+	}
+	statusText := "challenge_required"
+	if status != domain.ChallengeStatusPending {
+		statusText = string(status)
 	}
 	out := Output{
 		UserID:      user.ID.String(),
@@ -209,7 +231,7 @@ func (uc *UseCase) challengeResponse(ctx context.Context, challenge domain.Chall
 		MiddleName:  user.MiddleName,
 		DisplayName: user.DisplayName,
 		AvatarURL:   user.AvatarURL,
-		Status:      "challenge_required",
+		Status:      statusText,
 		Challenge:   info,
 	}
 	if challenge.Status == domain.ChallengeStatusCompleted {

@@ -18,6 +18,8 @@ func RegisterV1(r chi.Router, svc public.Service, auth public.AuthPort) {
 		r.With(pmiddleware.RateLimit(20, time.Minute)).Post("/register", h.Register)
 		r.With(pmiddleware.RateLimit(10, time.Minute)).Post("/login", h.Login)
 		r.With(pmiddleware.RateLimit(10, time.Minute)).Post("/telegram", h.TelegramLogin)
+		r.With(pmiddleware.RateLimit(10, time.Minute)).Post("/google", h.GoogleLogin)
+		r.With(pmiddleware.RateLimit(10, time.Minute)).Post("/apple", h.AppleLogin)
 		r.With(pmiddleware.RateLimit(20, time.Minute)).Post("/refresh", h.Refresh)
 		r.With(pmiddleware.RateLimit(20, time.Minute)).Post("/confirm", h.ConfirmEmail)
 		r.With(pmiddleware.RateLimit(10, time.Minute)).Post("/confirm/request", h.RequestEmailConfirmation)

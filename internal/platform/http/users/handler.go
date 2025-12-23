@@ -25,6 +25,8 @@ type Handler struct {
 	register              phttp.UseCaseHandler[usersapi.RegisterInput, login.Output]
 	login                 phttp.UseCaseHandler[usersapi.LoginInput, login.Output]
 	telegram              phttp.UseCaseHandler[usersapi.TelegramLoginInput, login.Output]
+	google                phttp.UseCaseHandler[usersapi.GoogleLoginInput, login.Output]
+	apple                 phttp.UseCaseHandler[usersapi.AppleLoginInput, login.Output]
 	refresh               phttp.UseCaseHandler[usersapi.RefreshInput, refresh.Output]
 	confirmEmail          phttp.UseCaseHandler[usersapi.ConfirmEmailInput, login.Output]
 	requestConfirm        phttp.UseCaseHandler[usersapi.RequestEmailInput, struct{}]
@@ -59,6 +61,12 @@ func NewHandler(svc usersapi.Service, middleware phttp.UseCaseMiddleware) *Handl
 		}),
 		telegram: phttp.UseCaseFunc[usersapi.TelegramLoginInput, login.Output](func(ctx context.Context, cmd usersapi.TelegramLoginInput) (login.Output, error) {
 			return svc.LoginWithTelegram(ctx, cmd)
+		}),
+		google: phttp.UseCaseFunc[usersapi.GoogleLoginInput, login.Output](func(ctx context.Context, cmd usersapi.GoogleLoginInput) (login.Output, error) {
+			return svc.LoginWithGoogle(ctx, cmd)
+		}),
+		apple: phttp.UseCaseFunc[usersapi.AppleLoginInput, login.Output](func(ctx context.Context, cmd usersapi.AppleLoginInput) (login.Output, error) {
+			return svc.LoginWithApple(ctx, cmd)
 		}),
 		refresh: phttp.UseCaseFunc[usersapi.RefreshInput, refresh.Output](func(ctx context.Context, cmd usersapi.RefreshInput) (refresh.Output, error) {
 			return svc.Refresh(ctx, cmd)
@@ -324,6 +332,38 @@ func (h *Handler) TelegramLogin(w http.ResponseWriter, r *http.Request) {
 			RefreshToken: out.RefreshToken,
 		},
 	})
+}
+
+func (h *Handler) GoogleLogin(w http.ResponseWriter, r *http.Request) {
+	var req dto.SocialIDTokenRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		phttp.WriteError(w, http.StatusBadRequest, "invalid_json", "Invalid JSON")
+		return
+	}
+
+	out, err := phttp.HandleUseCase(h.middleware, r, h.google, usersapi.GoogleLoginInput{IDToken: req.IDToken})
+	if err != nil {
+		status, code, msg := mapError(err)
+		phttp.WriteError(w, status, code, msg)
+		return
+	}
+	writeAuthResponse(w, out)
+}
+
+func (h *Handler) AppleLogin(w http.ResponseWriter, r *http.Request) {
+	var req dto.SocialIDTokenRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		phttp.WriteError(w, http.StatusBadRequest, "invalid_json", "Invalid JSON")
+		return
+	}
+
+	out, err := phttp.HandleUseCase(h.middleware, r, h.apple, usersapi.AppleLoginInput{IDToken: req.IDToken})
+	if err != nil {
+		status, code, msg := mapError(err)
+		phttp.WriteError(w, status, code, msg)
+		return
+	}
+	writeAuthResponse(w, out)
 }
 
 func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
