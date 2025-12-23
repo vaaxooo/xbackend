@@ -43,14 +43,27 @@ func (v *IDTokenVerifier) Verify(ctx context.Context, raw string, claims jwt.Cla
 	if err != nil || len(audOK) == 0 {
 		return errors.New("missing audience")
 	}
-	if !claims.VerifyAudience(v.audience, true) {
+	if v.audience != "" && !audienceMatches(audOK, v.audience) {
 		return errors.New("audience mismatch")
 	}
-	if v.issuer != "" && !claims.VerifyIssuer(v.issuer, true) {
+	iss, err := claims.GetIssuer()
+	if err != nil {
+		return errors.New("missing issuer")
+	}
+	if v.issuer != "" && iss != v.issuer {
 		return errors.New("issuer mismatch")
 	}
 	if exp, err := claims.GetExpirationTime(); err != nil || exp == nil || !exp.After(time.Now()) {
 		return errors.New("token expired")
 	}
 	return nil
+}
+
+func audienceMatches(list jwt.ClaimStrings, expected string) bool {
+	for _, aud := range list {
+		if aud == expected {
+			return true
+		}
+	}
+	return false
 }

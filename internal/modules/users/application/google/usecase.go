@@ -76,9 +76,6 @@ func (uc *UseCase) Execute(ctx context.Context, in Input) (login.Output, error) 
 	if tokenClaims.Subject == "" || tokenClaims.Email == "" {
 		return login.Output{}, domain.ErrInvalidCredentials
 	}
-	if !tokenClaims.VerifyIssuer("https://accounts.google.com", true) && !tokenClaims.VerifyIssuer("accounts.google.com", true) {
-		return login.Output{}, domain.ErrInvalidCredentials
-	}
 
 	ident, found, err := uc.identities.GetByProvider(ctx, providerName, tokenClaims.Subject)
 	if err != nil {
