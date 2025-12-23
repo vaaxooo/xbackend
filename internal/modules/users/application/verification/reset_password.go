@@ -4,13 +4,14 @@ import (
 	"context"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/vaaxooo/xbackend/internal/modules/users/application/common"
 	"github.com/vaaxooo/xbackend/internal/modules/users/domain"
 )
 
 type ResetPasswordInput struct {
 	Email       string
-	Code        string
+	Token       string
 	NewPassword string
 }
 
@@ -38,6 +39,10 @@ func (uc *ResetPasswordUseCase) Execute(ctx context.Context, in ResetPasswordInp
 		return struct{}{}, domain.ErrInvalidCredentials
 	}
 
+	if _, err := uuid.Parse(in.Token); err != nil {
+		return struct{}{}, domain.ErrInvalidCredentials
+	}
+
 	ident, found, err := uc.identities.GetByProvider(ctx, email.Provider(), email.String())
 	if err != nil {
 		return struct{}{}, common.NormalizeError(err)
@@ -46,12 +51,12 @@ func (uc *ResetPasswordUseCase) Execute(ctx context.Context, in ResetPasswordInp
 		return struct{}{}, domain.ErrInvalidCredentials
 	}
 
-	token, found, err := uc.tokens.GetByCode(ctx, ident.ID, domain.TokenTypePasswordReset, in.Code)
+	token, found, err := uc.tokens.GetByID(ctx, in.Token)
 	if err != nil {
 		return struct{}{}, common.NormalizeError(err)
 	}
 	now := time.Now().UTC()
-	if !found || !token.IsValid(in.Code, now) {
+	if !found || token.Type != domain.TokenTypePasswordReset || token.IdentityID != ident.ID || !token.IsActive(now) {
 		return struct{}{}, domain.ErrInvalidCredentials
 	}
 

@@ -21,11 +21,6 @@ type emailTemplates struct {
 	resetHTML        *htmpl.Template
 }
 
-type templateData struct {
-	Code    string
-	Expires string
-}
-
 func mustLoadEmailTemplates() emailTemplates {
 	return emailTemplates{
 		confirmationText: ttmpl.Must(ttmpl.ParseFS(emailTemplateFS, "templates/confirm_email.txt")),
@@ -36,16 +31,28 @@ func mustLoadEmailTemplates() emailTemplates {
 }
 
 func (t emailTemplates) renderConfirmation(evt userevents.EmailConfirmationRequested) (string, string, error) {
-	data := templateData{Code: evt.Code, Expires: evt.ExpiresAt.Format(emailTemplateDateFormat)}
+	data := struct {
+		Code    string
+		Expires string
+	}{
+		Code:    evt.Code,
+		Expires: evt.ExpiresAt.Format(emailTemplateDateFormat),
+	}
 	return renderTemplates(t.confirmationText, t.confirmationHTML, data)
 }
 
 func (t emailTemplates) renderPasswordReset(evt userevents.PasswordResetRequested) (string, string, error) {
-	data := templateData{Code: evt.Code, Expires: evt.ExpiresAt.Format(emailTemplateDateFormat)}
+	data := struct {
+		Token   string
+		Expires string
+	}{
+		Token:   evt.Token,
+		Expires: evt.ExpiresAt.Format(emailTemplateDateFormat),
+	}
 	return renderTemplates(t.resetText, t.resetHTML, data)
 }
 
-func renderTemplates(textTpl *ttmpl.Template, htmlTpl *htmpl.Template, data templateData) (string, string, error) {
+func renderTemplates(textTpl *ttmpl.Template, htmlTpl *htmpl.Template, data any) (string, string, error) {
 	var textBuf bytes.Buffer
 	if err := textTpl.Execute(&textBuf, data); err != nil {
 		return "", "", err

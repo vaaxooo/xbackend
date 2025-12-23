@@ -453,7 +453,7 @@ func (h *Handler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 		phttp.WriteError(w, http.StatusBadRequest, "invalid_json", "Invalid JSON")
 		return
 	}
-	if _, err := phttp.HandleUseCase(h.middleware, r, h.resetPassword, usersapi.ResetPasswordInput{Email: req.Email, Code: req.Code, NewPassword: req.Password}); err != nil {
+	if _, err := phttp.HandleUseCase(h.middleware, r, h.resetPassword, usersapi.ResetPasswordInput{Email: req.Email, Token: req.Token, NewPassword: req.Password}); err != nil {
 		status, code, msg := mapError(err)
 		phttp.WriteError(w, status, code, msg)
 		return

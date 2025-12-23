@@ -156,6 +156,9 @@ func (stubVerificationTokenRepo) Create(context.Context, domain.VerificationToke
 func (stubVerificationTokenRepo) GetLatest(context.Context, string, domain.TokenType) (domain.VerificationToken, bool, error) {
 	return domain.VerificationToken{}, false, nil
 }
+func (stubVerificationTokenRepo) GetByID(context.Context, string) (domain.VerificationToken, bool, error) {
+	return domain.VerificationToken{}, false, nil
+}
 func (stubVerificationTokenRepo) GetByCode(context.Context, string, domain.TokenType, string) (domain.VerificationToken, bool, error) {
 	return domain.VerificationToken{}, false, nil
 }
